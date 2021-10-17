@@ -133,9 +133,9 @@ Branching allows one of multiple paths to be followed in the template at renderi
 
 ```yaml
 foo:
-	$if: ${value > 5}
-	$then: I am big
-	$else: I am small
+  $if: ${value > 5}
+  $then: I am big
+  $else: I am small
 ```
 
 If rendered with `{"value": 1}` the result will be:
@@ -156,15 +156,15 @@ Looping allows an array of inputs to be expanded into the rendered output using 
 
 ```yaml
 squares:
-	$for: ${numbers}
-	$each: ${item * item}
+  $for: ${numbers}
+  $each: ${item * item}
 ```
 
 If rendered with `{"numbers": [1, 2, 3]}` the result will be:
 
 ```json
 {
-   "squares": [2, 4, 9]'
+  "squares": [2, 4, 9]
 }
 ```
 
