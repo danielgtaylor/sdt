@@ -1,0 +1,27 @@
+document:
+  schemas:
+    input: {}
+    output:
+      type: object
+      properties:
+        boolean:
+          type: boolean
+        integer:
+          type: integer
+        number:
+          type: number
+        string:
+          type: string
+  template:
+    boolean: wrong
+    integer: wrong
+    number: wrong
+    string: true
+tests:
+  - input: {}
+    errors:
+      - string not allowed, expecting [boolean]
+      - string not allowed, expecting [integer]
+      - string not allowed, expecting [number]
+      - boolean not allowed, expecting [string]
+    expected: {}

@@ -1,0 +1,59 @@
+document:
+  schemas:
+    input:
+      type: object
+      properties:
+        things:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                default: ""
+              price:
+                type: number
+                default: 0
+    output:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+        prices:
+          type: array
+          items:
+            type: number
+  template:
+    names:
+      $for: ${things}
+      $each: ${item.name}
+    prices:
+      $for: ${things}
+      $each:
+        $for: [1, 2, 3]
+        $as: num
+        $each: ${item.price * num}
+tests:
+  - name: multiple
+    input:
+      things:
+        - name: Thing 1
+          price: 25
+        - name: Thing 2
+          price: 10
+    expected:
+      names: [Thing 1, Thing 2]
+      prices: [25, 50, 75, 10, 20, 30]
+  - name: just_name
+    input:
+      things:
+        - name: Thing 1
+        - name: Thing 2
+    expected:
+      names: [Thing 1, Thing 2]
+      prices: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  - name: empty
+    input: {}
+    expected: {}

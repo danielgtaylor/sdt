@@ -1,0 +1,54 @@
+document:
+  schemas:
+    input:
+      type: object
+      properties:
+        boolean:
+          type: boolean
+        nonboolean:
+          type: string
+    output:
+      type: object
+      properties:
+        example:
+          type: string
+        example_nonboolean:
+          type: string
+        optional_nested:
+          type: string
+      required: [example, example_nonboolean]
+  template:
+    example:
+      $if: ${boolean}
+      $then: boolean was true
+      $else: boolean was false
+    example_nonboolean:
+      $if: ${nonboolean}
+      $then: nonboolean was truthy
+      $else: nonboolean was falsey
+    optional_nested:
+      $if: ${boolean}
+      $then:
+        $if: ${nonboolean}
+        $then: both are truthy
+tests:
+  - name: truthy
+    input:
+      boolean: true
+      nonboolean: value
+    expected:
+      example: boolean was true
+      example_nonboolean: nonboolean was truthy
+      optional_nested: both are truthy
+  - name: falsey
+    input:
+      boolean: false
+      nonboolean: ""
+    expected:
+      example: boolean was false
+      example_nonboolean: nonboolean was falsey
+  - name: empty
+    input: {}
+    expected:
+      example: boolean was false
+      example_nonboolean: nonboolean was falsey

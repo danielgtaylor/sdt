@@ -1,0 +1,18 @@
+schemas:
+  dialect: openapi-3.1
+  input:
+    # Input schema goes here
+    type: object
+    properties:
+      name:
+        type: string
+        default: world
+  output:
+    # Output schema goes here, also supports refs:
+    type: object
+    properties:
+      greeting:
+        type: string
+template:
+  # Templated output structure goes here
+  greeting: Hello, ${name}!

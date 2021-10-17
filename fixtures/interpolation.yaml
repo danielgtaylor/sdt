@@ -1,0 +1,43 @@
+document:
+  schemas:
+    input:
+      type: object
+      properties:
+        foo:
+          type: string
+        bar:
+          type: number
+    output:
+      type: object
+      properties:
+        strings:
+          type: array
+          items:
+            type: string
+        num:
+          type: number
+  template:
+    strings:
+      - ${foo}
+      - prefix${foo}
+      - ${foo}suffix
+      - both${foo}both
+      - ${foo}${bar}
+    num: ${bar}
+tests:
+  - name: basic
+    input:
+      foo: string
+      bar: 123
+    expected:
+      strings:
+        - string
+        - prefixstring
+        - stringsuffix
+        - bothstringboth
+        - string123
+      num: 123
+  - name: empty
+    input: {}
+    expected:
+      strings: [prefix, suffix, bothboth, ""]
