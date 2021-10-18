@@ -46,11 +46,13 @@ template:
 You can run the example like so:
 
 ```sh
-$ go run ./cmd/sdt ./samples/greeting.yaml ./samples/params.yaml
+$ go run ./cmd/sdt ./samples/greeting.yaml <./samples/params.yaml
 {
   "greeting": "Hello, SDT!"
 }
 ```
+
+Input params for rendering can be passed via stdin as JSON/YAML and/or via command line arguments as [CLI shorthand syntax](https://github.com/danielgtaylor/shorthand#readme).
 
 ## Schemas
 
