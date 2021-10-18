@@ -1,0 +1,20 @@
+document:
+  schemas:
+    input:
+      type: object
+      properties:
+        name:
+          type: string
+      additionalProperties: false
+    output:
+      type: object
+      properties:
+        hello:
+          type: string
+  template:
+    hello: ${name}
+tests:
+  - input:
+      nam: I am misspelled
+    errors:
+      - "'nam' not allowed"

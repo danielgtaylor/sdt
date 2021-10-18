@@ -3,6 +3,7 @@ package sdt
 import (
 	"fmt"
 	"io/ioutil"
+	"path"
 
 	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
 	"gopkg.in/yaml.v3"
@@ -54,7 +55,11 @@ func (bp *Document) ValidateInput(filename string, params map[string]interface{}
 	}
 
 	bp.Schemas.Input["type"] = "object"
-	s, err := compileSchema(filename, bp.Schemas.Dialect, bp.Schemas.Input)
+	if bp.Schemas.Input["additionalProperties"] == nil {
+		// Input should be strict!
+		bp.Schemas.Input["additionalProperties"] = false
+	}
+	s, err := compileSchema(path.Join(filename, "schemas", "input"), bp.Schemas.Dialect, bp.Schemas.Input)
 	if err != nil {
 		return fmt.Errorf("error compiling schema: %w", err)
 	}
@@ -77,18 +82,21 @@ func (bp *Document) ValidateTemplate(filename string) []error {
 	}
 
 	bp.Schemas.Input["type"] = "object"
-	sin, err := compileSchema(filename, bp.Schemas.Dialect, bp.Schemas.Input)
+	sin, err := compileSchema(path.Join(filename, "schemas", "input"), bp.Schemas.Dialect, bp.Schemas.Input)
 	if err != nil {
 		return []error{fmt.Errorf("error validating template: %w", err)}
 	}
 
-	sout, err := compileSchema(filename, bp.Schemas.Dialect, bp.Schemas.Output)
+	sout, err := compileSchema(path.Join(filename, "schemas", "output"), bp.Schemas.Dialect, bp.Schemas.Output)
 	if err != nil {
 		return []error{fmt.Errorf("error validating template: %w", err)}
 	}
 
 	ctx := newContext()
-	example := generateExample(sin)
+	example, err := generateExample(sin)
+	if err != nil {
+		return []error{fmt.Errorf("error validating template: %w", err)}
+	}
 	validateTemplate(ctx, sout, bp.Template, example.(map[string]interface{}))
 
 	return ctx.Errors.Value
@@ -99,7 +107,7 @@ func (bp *Document) ValidateOutput(filename string, output interface{}) error {
 		return nil
 	}
 
-	s, err := compileSchema(filename, bp.Schemas.Dialect, bp.Schemas.Output)
+	s, err := compileSchema(path.Join(filename, "schemas", "output"), bp.Schemas.Dialect, bp.Schemas.Output)
 	if err != nil {
 		return fmt.Errorf("error compiling schema: %w", err)
 	}

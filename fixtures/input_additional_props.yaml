@@ -1,0 +1,13 @@
+document:
+  schemas:
+    input:
+      type: object
+      additionalProperties:
+        type: string
+    output:
+      type: string
+  template: ${prop1}
+tests:
+  - input: {}
+    errors:
+      - additionalProperties not supported

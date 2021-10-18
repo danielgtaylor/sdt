@@ -10,37 +10,48 @@ import (
 // sets a non-zero value for all properties/items. The purpose is to have an
 // instance in Go with discrete types that can be used for the expression
 // type checker.
-func generateExample(s *jsonschema.Schema) interface{} {
+func generateExample(s *jsonschema.Schema) (interface{}, error) {
 	if s.Ref != nil {
 		return generateExample(s.Ref)
 	}
 
 	if len(s.Types) > 1 {
-		panic(fmt.Errorf("multiple types not supported"))
+		return nil, fmt.Errorf("multiple types not supported")
 	}
 
 	switch s.Types[0] {
 	case "boolean":
-		return true
+		return true, nil
 	case "integer":
-		return 1
+		return 1, nil
 	case "number":
-		return 1.0
+		return 1.0, nil
 	case "string":
-		return "string"
+		return "string", nil
 	case "array":
-		return []interface{}{generateExample(getItems(s))}
+		example, err := generateExample(getItems(s))
+		if err != nil {
+			return nil, err
+		}
+		return []interface{}{example}, nil
 	case "object":
 		if s.AdditionalProperties != nil {
-			panic(fmt.Errorf("additionalProperties not supported"))
+			// Ignore `additionalProperties: false`, fail everything else.
+			if _, ok := s.AdditionalProperties.(bool); !ok {
+				return nil, fmt.Errorf("additionalProperties not supported")
+			}
 		}
 
 		tmp := map[string]interface{}{}
 		for k, v := range s.Properties {
-			tmp[k] = generateExample(v)
+			example, err := generateExample(v)
+			if err != nil {
+				return nil, err
+			}
+			tmp[k] = example
 		}
-		return tmp
+		return tmp, nil
 	}
 
-	return nil
+	return nil, nil
 }
