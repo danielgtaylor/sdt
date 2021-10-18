@@ -42,7 +42,7 @@ func main() {
 	}
 
 	// Validate params from bp.Schema
-	if err := doc.ValidateInput("args", params); err != nil {
+	if err := doc.ValidateInput(os.Args[1], params); err != nil {
 		fmt.Println("Error while validating input params:")
 		fmt.Println(err)
 		os.Exit(1)
