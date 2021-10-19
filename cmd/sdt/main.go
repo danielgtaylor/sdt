@@ -33,7 +33,7 @@ func main() {
 	}
 
 	// Validate template output format
-	if errs := doc.ValidateTemplate(os.Args[1]); len(errs) > 0 {
+	if errs := doc.ValidateTemplate(); len(errs) > 0 {
 		fmt.Println("Error while validating template:")
 		for _, err := range errs {
 			fmt.Println(err)
@@ -42,7 +42,7 @@ func main() {
 	}
 
 	// Validate params from bp.Schema
-	if err := doc.ValidateInput(os.Args[1], params); err != nil {
+	if err := doc.ValidateInput(params); err != nil {
 		fmt.Println("Error while validating input params:")
 		fmt.Println(err)
 		os.Exit(1)
@@ -59,7 +59,7 @@ func main() {
 	}
 
 	// Confirm that the output conforms to the schema now that it's rendered.
-	if err := doc.ValidateOutput(os.Args[1], rendered); err != nil {
+	if err := doc.ValidateOutput(rendered); err != nil {
 		fmt.Println("Error validating rendered output:")
 		fmt.Println(err)
 		os.Exit(1)

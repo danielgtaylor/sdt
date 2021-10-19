@@ -252,3 +252,5 @@ If you need to create arrays of arrays, wrap it in another array to get around t
 2. Should `nil` results from interpolation be rendered in the final output? Example: `name: ${name}` and what if `name` is `nil`?
 
 3. Support for constants? Values that should always be present in the params that can contain complex and reusable data for the template?
+
+4. Ability to sort `$for` loop output based on some expr?
