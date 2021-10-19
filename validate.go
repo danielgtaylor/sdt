@@ -86,8 +86,21 @@ func compileSchema(filename string, dialect string, input interface{}) (*jsonsch
 		c.Draft = d
 	}
 	c.ExtractAnnotations = true
-	c.AddResource(filename, bytes.NewReader(j))
-	return c.Compile(filename)
+	fixed := strings.Replace(filename, "#", "/", -1)
+	c.AddResource(fixed, bytes.NewReader(j))
+	return c.Compile(fixed)
+}
+
+func getJSONType(value interface{}) string {
+	return map[reflect.Kind]string{
+		reflect.Bool:    "boolean",
+		reflect.Int:     "number",
+		reflect.Int64:   "number",
+		reflect.Float64: "number",
+		reflect.String:  "string",
+		reflect.Slice:   "array",
+		reflect.Map:     "object",
+	}[reflect.TypeOf(value).Kind()]
 }
 
 func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, paramsExample map[string]interface{}) {
@@ -99,16 +112,7 @@ func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, 
 		return
 	}
 
-	t := reflect.TypeOf(template)
-	jsonType := map[reflect.Kind]string{
-		reflect.Bool:    "boolean",
-		reflect.Int:     "number",
-		reflect.Int64:   "number",
-		reflect.Float64: "number",
-		reflect.String:  "string",
-		reflect.Slice:   "array",
-		reflect.Map:     "object",
-	}[t.Kind()]
+	jsonType := getJSONType(template)
 
 	// Special case: string template
 	if jsonType == "string" {
@@ -125,9 +129,23 @@ func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, 
 
 		if len(matches) == 1 && len(matches[0]) == len(template.(string)) {
 			// This is a single value string template that can return any type.
-			// TODO: use the expression evaluation engine to determine return type?
+			t := template.(string)
+			out, err := expr.Eval(t[2:len(t)-1], paramsExample)
+			if err != nil {
+				ctx.AddError(fmt.Errorf("error validating template: unable to eval expression '%s': %v", t[2:len(t)-1], err))
+			}
+			outJSONType := getJSONType(out)
+			if !hasType(s, outJSONType) {
+				ctx.AddError(fmt.Errorf("error validating template: expression '%s' results in %s but expecting %v", t[2:len(t)-1], outJSONType, s.Types))
+			}
 			return
+		} else {
+			// This will result in a string as output.
+			if !hasType(s, "string") {
+				ctx.AddError(fmt.Errorf("error validating template: string not allowed, expecting %v", s.Types))
+			}
 		}
+		return
 	}
 
 	// Special case: if/for logic
@@ -211,6 +229,14 @@ func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, 
 						validateTemplate(ctx.WithPath(fmt.Sprintf("$each/%d", i)), getItems(s), eachItem, paramsCopy)
 					}
 				} else {
+					if m, ok := t["$each"].(map[string]interface{}); ok {
+						parts := strings.Split(ctx.Path, "/")
+						if m["$for"] != nil && (len(parts) < 2 || parts[len(parts)-2] != "$each") {
+							// Special case: nested $for loops.
+							validateTemplate(ctx.WithPath("$each"), s, t["$each"], paramsCopy)
+							return
+						}
+					}
 					validateTemplate(ctx.WithPath("$each"), getItems(s), t["$each"], paramsCopy)
 				}
 			}

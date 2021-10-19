@@ -16,5 +16,5 @@ tests:
   - input:
       foo: some test value
     errors:
-      - expected boolean, but got string
+      - results in string but expecting [boolean]
     expected: {}

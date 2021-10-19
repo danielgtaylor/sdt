@@ -22,14 +22,16 @@ type Schemas struct {
 // render out a data structure. Context data that is described by the schema
 // is passed as input when rendering.
 type Document struct {
+	Filename string      `json:"-" yaml:"-"`
 	Schemas  *Schemas    `json:"schemas" yaml:"schemas"`
 	Template interface{} `json:"template" yaml:"template"`
 }
 
 // New creates a new document.
-func New() *Document {
+func New(filename string) *Document {
 	return &Document{
-		Schemas: &Schemas{},
+		Filename: filename,
+		Schemas:  &Schemas{},
 	}
 }
 
@@ -40,26 +42,28 @@ func NewFromFile(filename string) (*Document, error) {
 		return nil, err
 	}
 
-	d := &Document{}
-	if err := yaml.Unmarshal(b, &d); err != nil {
+	doc := &Document{}
+	if err := yaml.Unmarshal(b, &doc); err != nil {
 		return nil, err
 	}
 
-	return d, nil
+	doc.Filename = filename
+
+	return doc, nil
 }
 
 // Validate that input params are correct based on the schema.
-func (bp *Document) ValidateInput(filename string, params map[string]interface{}) error {
-	if bp.Schemas == nil || bp.Schemas.Input == nil {
+func (doc *Document) ValidateInput(params map[string]interface{}) error {
+	if doc.Schemas == nil || doc.Schemas.Input == nil {
 		return nil
 	}
 
-	bp.Schemas.Input["type"] = "object"
-	if bp.Schemas.Input["additionalProperties"] == nil {
+	doc.Schemas.Input["type"] = "object"
+	if doc.Schemas.Input["additionalProperties"] == nil {
 		// Input should be strict!
-		bp.Schemas.Input["additionalProperties"] = false
+		doc.Schemas.Input["additionalProperties"] = false
 	}
-	s, err := compileSchema(path.Join(filename, "schemas", "input"), bp.Schemas.Dialect, bp.Schemas.Input)
+	s, err := compileSchema(path.Join(doc.Filename, "schemas", "input"), doc.Schemas.Dialect, doc.Schemas.Input)
 	if err != nil {
 		return fmt.Errorf("error compiling schema: %w", err)
 	}
@@ -72,42 +76,42 @@ func (bp *Document) ValidateInput(filename string, params map[string]interface{}
 	return nil
 }
 
-func (bp *Document) ValidateTemplate(filename string) []error {
-	if bp.Schemas == nil || bp.Schemas.Input == nil {
+func (doc *Document) ValidateTemplate() []error {
+	if doc.Schemas == nil || doc.Schemas.Input == nil {
 		return []error{fmt.Errorf("input schema required")}
 	}
 
-	if bp.Schemas.Output == nil {
+	if doc.Schemas.Output == nil {
 		return nil
 	}
 
-	bp.Schemas.Input["type"] = "object"
-	sin, err := compileSchema(path.Join(filename, "schemas", "input"), bp.Schemas.Dialect, bp.Schemas.Input)
+	doc.Schemas.Input["type"] = "object"
+	sin, err := compileSchema(path.Join(doc.Filename, "schemas", "input"), doc.Schemas.Dialect, doc.Schemas.Input)
 	if err != nil {
 		return []error{fmt.Errorf("error validating template: %w", err)}
 	}
 
-	sout, err := compileSchema(path.Join(filename, "schemas", "output"), bp.Schemas.Dialect, bp.Schemas.Output)
+	sout, err := compileSchema(path.Join(doc.Filename, "schemas", "output"), doc.Schemas.Dialect, doc.Schemas.Output)
 	if err != nil {
 		return []error{fmt.Errorf("error validating template: %w", err)}
 	}
 
-	ctx := newContext()
+	ctx := newContext(doc.Filename, "template")
 	example, err := generateExample(sin)
 	if err != nil {
 		return []error{fmt.Errorf("error validating template: %w", err)}
 	}
-	validateTemplate(ctx, sout, bp.Template, example.(map[string]interface{}))
+	validateTemplate(ctx, sout, doc.Template, example.(map[string]interface{}))
 
 	return ctx.Errors.Value
 }
 
-func (bp *Document) ValidateOutput(filename string, output interface{}) error {
-	if bp.Schemas == nil || bp.Schemas.Output == nil {
+func (doc *Document) ValidateOutput(output interface{}) error {
+	if doc.Schemas == nil || doc.Schemas.Output == nil {
 		return nil
 	}
 
-	s, err := compileSchema(path.Join(filename, "schemas", "output"), bp.Schemas.Dialect, bp.Schemas.Output)
+	s, err := compileSchema(path.Join(doc.Filename, "schemas", "output"), doc.Schemas.Dialect, doc.Schemas.Output)
 	if err != nil {
 		return fmt.Errorf("error compiling schema: %w", err)
 	}
@@ -121,13 +125,13 @@ func (bp *Document) ValidateOutput(filename string, output interface{}) error {
 }
 
 // Render the template into a data structure.
-func (bp *Document) Render(params map[string]interface{}) (interface{}, []error) {
-	ctx := newContext()
+func (doc *Document) Render(params map[string]interface{}) (interface{}, []error) {
+	ctx := newContext(doc.Filename, "template")
 
 	// Built-in function definitions.
 	params["append"] = func(a []interface{}, b []interface{}) []interface{} {
 		return append(a, b...)
 	}
 
-	return render(ctx, bp.Template, params), ctx.Errors.Value
+	return render(ctx, doc.Template, params), ctx.Errors.Value
 }

@@ -69,14 +69,15 @@ func TestFixtures(t *testing.T) {
 				t.Error(err)
 				return
 			}
+			f.Document.Filename = filename + "#/document"
 
 			for i, test := range f.Tests {
 				t.Run(fmt.Sprintf("%s-%d-%s", file.Name(), i, test.Name), func(t *testing.T) {
-					if test.ErrorsFail(t, f.Document.ValidateTemplate(filename)) {
+					if test.ErrorsFail(t, f.Document.ValidateTemplate()) {
 						return
 					}
 
-					err := f.Document.ValidateInput(filename, test.Input)
+					err := f.Document.ValidateInput(test.Input)
 					if err != nil && test.ErrorsFail(t, []error{err}) {
 						return
 					}
@@ -86,7 +87,7 @@ func TestFixtures(t *testing.T) {
 						return
 					}
 
-					err = f.Document.ValidateOutput(filename, out)
+					err = f.Document.ValidateOutput(out)
 					if err != nil && test.ErrorsFail(t, []error{err}) {
 						return
 					}
