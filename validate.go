@@ -136,6 +136,12 @@ func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, 
 			}
 			outJSONType := getJSONType(out)
 			if !hasType(s, outJSONType) {
+				if outJSONType == "number" && hasType(s, "integer") {
+					// Parsed static numbers are always float64 for some input formats
+					// like JSON. We can safely ignore this because it should render
+					// correctly in the output.
+					return
+				}
 				ctx.AddError(fmt.Errorf("error validating template: expression '%s' results in %s but expecting %v", t[2:len(t)-1], outJSONType, s.Types))
 			}
 			return
