@@ -1,5 +1,7 @@
 # Structured Data Templates
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/danielgtaylor/sdt.svg)](https://pkg.go.dev/github.com/danielgtaylor/sdt)
+
 Structured data templates are a templating engine that takes a simplified set of input parameters and transforms them into a complex structured data output. Both the inputs and outputs can be validated against a schema.
 
 The goals of this project are to:
@@ -41,14 +43,36 @@ template:
   greeting: Hello, ${name}!
 ```
 
+## Installation
+
+You can install via:
+
+```sh
+# Get the `sdt` command
+$ go get -u github.com/danielgtaylor/sdt/cmd/...
+
+# Install as a library
+$ go get -u github.com/danielgtaylor/sdt
+```
+
 ## Example
 
 You can run the example like so:
 
 ```sh
-$ go run ./cmd/sdt ./samples/greeting.yaml <./samples/params.yaml
+# Validate the template
+$ sdt validate ./samples/greeting.yaml
+
+# Render by passing in a file
+$ sdt render ./samples/greeting.yaml <./samples/params.yaml
 {
   "greeting": "Hello, SDT!"
+}
+
+# Render by using CLI shorthand syntax
+$ sdt render ./samples/greeting.yaml name: Alice
+{
+  "greeting": "Hello, Alice!"
 }
 ```
 
