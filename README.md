@@ -102,7 +102,14 @@ A template is just JSON/YAML. For example:
 hello: world
 ```
 
-That is a valid static template. Nothing will change when rendered, which is not very useful. Normally, when a template is rendered, it is passed parameters, and these are used for interpolation, branching, and looping. These features all make use of a basic expression language.
+That is a valid static template. Nothing will change when rendered, which is not very useful. Normally, when a template is rendered, it is passed parameters, and these are used for interpolation, branching, and looping, which are specified using special syntax in strings or keywords as object property names:
+
+- Interpolation: `${...}`
+- Branching: `$if`, `$then`, `$else`
+- Looping: `$for`, `$as`, `$each`
+- Special operations: `$flatten`
+
+These features make use of a basic expression language.
 
 ### Expressions
 
@@ -234,40 +241,66 @@ You would get as output:
 }
 ```
 
-#### Multiple Outputs
+### Flatten
 
-If the result of the `$each` template is an array, then each item of that array is individually appended to the overall result. This allows one input to generate multiple output entries in the final array.
+The `$flatten` special operator takes an array of arrays and flattens them into a single array. This can be useful for a number of scenarios like:
+
+- Adding default items to a `$for` loop output
+- Having one item of a `$for` clause generate multiple outputs
+
+For a simple example:
 
 ```yaml
-things:
-  $for: ${things}
-  $each:
-    - name: ${item.name} 1
-    - name: ${itme.name} 2
+my_array:
+  $flatten:
+    - [0, 1, 2]
+    - [3, 4, 5]
+    - [6, 7, 8]
 ```
 
-With the same input as above you'd get:
+This would result in:
 
 ```json
 {
-  "things": [
-    {
-      "name": "Alice 1"
-    },
-    {
-      "name": "Alice 2"
-    },
-    {
-      "name": "Bob 1"
-    },
-    {
-      "name": "Bob 2"
-    }
-  ]
+  "my_array": [0, 1, 2, 3, 4, 5, 6, 7, 8]
 }
 ```
 
-If you need to create arrays of arrays, wrap it in another array to get around this behavior.
+More complex scenarios are possible when combined with `$for` clauses:
+
+```yaml
+# Loop through the items twice, generating one item at a time.
+appended_array:
+  $flatten:
+    - $for: ${items}
+      $each: ${item}
+    - $for: ${items}
+      $each: ${item * item}
+# Loop through the items once, generating a list for each item.
+merged_array:
+  $flatten:
+    $for: ${items}
+    $each:
+      - ${item}
+      - ${item * item}
+```
+
+If given:
+
+```json
+{
+  "items": [2, 3, 4]
+}
+```
+
+You would get:
+
+```json
+{
+  "appended_array": [2, 3, 4, 4, 9, 16],
+  "merged_array": [2, 4, 3, 9, 4, 16]
+}
+```
 
 ## Open Questions
 

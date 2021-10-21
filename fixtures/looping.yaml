@@ -24,7 +24,9 @@ document:
         prices:
           type: array
           items:
-            type: number
+            type: array
+            items:
+              type: number
   template:
     names:
       $for: ${things}
@@ -45,7 +47,7 @@ tests:
           price: 10
     expected:
       names: [Thing 1, Thing 2]
-      prices: [25, 50, 75, 10, 20, 30]
+      prices: [[25, 50, 75], [10, 20, 30]]
   - name: just_name
     input:
       things:
@@ -53,7 +55,7 @@ tests:
         - name: Thing 2
     expected:
       names: [Thing 1, Thing 2]
-      prices: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+      prices: [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
   - name: empty
     input: {}
     expected: {}
