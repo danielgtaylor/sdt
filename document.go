@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"path"
 
-	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
 	"gopkg.in/yaml.v3"
 )
 
@@ -52,7 +51,7 @@ func NewFromFile(filename string) (*Document, error) {
 	return doc, nil
 }
 
-// Validate that input params are correct based on the schema.
+// ValidateInput validates that input params are correct based on the schema.
 func (doc *Document) ValidateInput(params map[string]interface{}) error {
 	if doc.Schemas == nil || doc.Schemas.Input == nil {
 		return nil
@@ -76,6 +75,8 @@ func (doc *Document) ValidateInput(params map[string]interface{}) error {
 	return nil
 }
 
+// ValidateTemplate validates that the template is structurally and semantically
+// correct based on the given schemas.
 func (doc *Document) ValidateTemplate() []error {
 	if doc.Schemas == nil || doc.Schemas.Input == nil {
 		return []error{fmt.Errorf("input schema required")}
@@ -106,6 +107,7 @@ func (doc *Document) ValidateTemplate() []error {
 	return ctx.Errors.Value
 }
 
+// ValidateOutput validates the rendered output against the given output schema.
 func (doc *Document) ValidateOutput(output interface{}) error {
 	if doc.Schemas == nil || doc.Schemas.Output == nil {
 		return nil

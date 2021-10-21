@@ -1,0 +1,38 @@
+document:
+  schemas:
+    input:
+      type: object
+      properties:
+        numbers:
+          type: array
+          items:
+            type: number
+            minimum: 2
+    output:
+      type: object
+      properties:
+        squares:
+          type: array
+          items:
+            type: number
+  template:
+    squares:
+      # This is obviously a contrived monstrosity for testing - avoid such
+      # complexity in your own templates if you can!
+      $flatten:
+        - - 0
+          - 1
+        - $flatten:
+            $for: ${numbers}
+            $each:
+              $flatten:
+                - - ${item}
+                - $if: true
+                  $then:
+                    - ${item * item}
+        - - 100
+tests:
+  - input:
+      numbers: [2, 3, 4]
+    expected:
+      squares: [0, 1, 2, 4, 3, 9, 4, 16, 100]

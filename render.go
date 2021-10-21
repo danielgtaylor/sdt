@@ -62,22 +62,27 @@ func handleLoop(ctx *context, v map[string]interface{}, params map[string]interf
 			}
 
 			itemResult := render(ctx.WithPath(i), v["$each"], paramsCopy)
-
-			// If the result is an array, we merge. This allows loops to generate
-			// more than one output per input. If it's not an array, just append
-			// like normal.
-			if resultArray, ok := itemResult.([]interface{}); ok {
-				tmp = append(tmp, resultArray...)
-			} else {
-				tmp = append(tmp, itemResult)
-			}
+			tmp = append(tmp, itemResult)
 		}
 
 		return tmp
-	} else {
-		ctx.AddError(fmt.Errorf("error rendering: $for expression result is not iterable: %v", items))
 	}
-	return nil
+
+	return ctx.AddError(fmt.Errorf("error rendering: $for expression result is not iterable: %v", items))
+}
+
+func handleFlatten(ctx *context, v map[string]interface{}, params map[string]interface{}) interface{} {
+	result := render(ctx.WithPath("$flatten"), v["$flatten"], params)
+
+	if s, ok := result.([]interface{}); ok {
+		tmp := make([]interface{}, 0, len(s))
+		for _, items := range s {
+			tmp = append(tmp, items.([]interface{})...)
+		}
+		return tmp
+	}
+
+	return ctx.AddError(fmt.Errorf("error rendering: $flatten result is not iterable"))
 }
 
 func handleInterpolation(ctx *context, v string, params map[string]interface{}) interface{} {
@@ -118,9 +123,11 @@ func render(ctx *context, template interface{}, params map[string]interface{}) i
 		if v["$if"] != nil {
 			return handleBranch(ctx, v, params)
 		}
-
 		if v["$for"] != nil {
 			return handleLoop(ctx, v, params)
+		}
+		if v["$flatten"] != nil {
+			return handleFlatten(ctx, v, params)
 		}
 
 		tmp := map[string]interface{}{}
