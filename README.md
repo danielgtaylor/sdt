@@ -1,6 +1,6 @@
 # Structured Data Templates
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/danielgtaylor/sdt.svg)](https://pkg.go.dev/github.com/danielgtaylor/sdt) [![Go Report Card](https://goreportcard.com/badge/github.com/danielgtaylor/sdt)](https://goreportcard.com/report/github.com/danielgtaylor/sdt) ![Build Status](https://github.com/github/danielgtaylor/sdt/workflows/test.yml/badge.svg?branch=main)
+[![Go Reference](https://pkg.go.dev/badge/github.com/danielgtaylor/sdt.svg)](https://pkg.go.dev/github.com/danielgtaylor/sdt) [![Go Report Card](https://goreportcard.com/badge/github.com/danielgtaylor/sdt)](https://goreportcard.com/report/github.com/danielgtaylor/sdt) ![Build Status](https://github.com/danielgtaylor/sdt/actions/workflows/test.yaml/badge.svg?branch=main) [![codecov](https://codecov.io/gh/danielgtaylor/sdt/branch/main/graph/badge.svg?token=KB0QD0H6HP)](https://codecov.io/gh/danielgtaylor/sdt)
 
 Structured data templates are a templating engine that takes a simplified set of input parameters and transforms them into a complex structured data output. Both the inputs and outputs can be validated against a schema.
 
