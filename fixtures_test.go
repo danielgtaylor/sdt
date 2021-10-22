@@ -93,7 +93,12 @@ func TestFixtures(t *testing.T) {
 						return
 					}
 
-					assert.Equal(t, test.Expected, out)
+					// Round trip to normalize all numbers in the output to make writing
+					// test expectations easier in YAML.
+					tmp, _ := yaml.Marshal(out)
+					yaml.Unmarshal(tmp, &out)
+
+					assert.EqualValues(t, test.Expected, out)
 				})
 			}
 		}

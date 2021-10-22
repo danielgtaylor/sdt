@@ -10,12 +10,14 @@ import (
 // schema to determine if unset values exist which have a default that should
 // be set, then sets them. Params are modified in-place.
 func setDefaults(s *jsonschema.Schema, params map[string]interface{}) {
-	if s.Ref != nil {
-		setDefaults(s.Ref, params)
-		return
+	for s.Ref != nil {
+		s = s.Ref
 	}
 
 	for k, v := range s.Properties {
+		for v.Ref != nil {
+			v = v.Ref
+		}
 		if v.Default != nil {
 			if _, ok := params[k]; !ok {
 				// Handle arbitrary JSON numbers by converting to the closest Go
@@ -33,7 +35,6 @@ func setDefaults(s *jsonschema.Schema, params map[string]interface{}) {
 				default:
 					params[k] = v.Default
 				}
-				continue
 			}
 		}
 

@@ -1,0 +1,12 @@
+document:
+  schemas:
+    input: {}
+    output:
+      type: string
+  template:
+    $if: true
+tests:
+  - input: {}
+    errors:
+      - $then clause is required
+    expected: {}

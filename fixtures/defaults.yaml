@@ -1,0 +1,67 @@
+document:
+  schemas:
+    input:
+      type: object
+      properties:
+        boolean:
+          type: boolean
+          default: false
+        integer:
+          type: integer
+          default: 0
+        number:
+          type: number
+          default: 0
+        string:
+          type: string
+          default: hello
+        array:
+          type: array
+          items:
+            $ref: "#/properties/object"
+          default:
+            - {}
+        object:
+          type: object
+          properties:
+            foo:
+              $ref: "#/properties/boolean"
+          default: {}
+    output:
+      type: object
+      properties:
+        boolean:
+          type: boolean
+        integer:
+          type: integer
+        number:
+          type: number
+        string:
+          type: string
+        array:
+          type: array
+          items:
+            $ref: "#/properties/object"
+        object:
+          type: object
+          properties:
+            foo:
+              $ref: "#/properties/boolean"
+  template:
+    boolean: ${boolean}
+    integer: ${integer}
+    number: ${number}
+    string: ${string}
+    array: ${array}
+    object: ${object}
+tests:
+  - input: {}
+    expected:
+      boolean: false
+      integer: 0
+      number: 0
+      string: hello
+      array:
+        - foo: false
+      object:
+        foo: false

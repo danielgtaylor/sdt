@@ -1,0 +1,14 @@
+document:
+  schemas:
+    input: {}
+    output:
+      type: object
+      properties:
+        foo:
+          type: string
+  template: 0
+tests:
+  - input: {}
+    errors:
+      - type number not allowed, expecting [object]
+    expected: {}
