@@ -41,8 +41,12 @@ func NewFromFile(filename string) (*Document, error) {
 		return nil, err
 	}
 
+	return NewFromBytes(filename, b)
+}
+
+func NewFromBytes(filename string, data []byte) (*Document, error) {
 	doc := &Document{}
-	if err := yaml.Unmarshal(b, &doc); err != nil {
+	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, err
 	}
 
@@ -77,34 +81,39 @@ func (doc *Document) ValidateInput(params map[string]interface{}) error {
 
 // ValidateTemplate validates that the template is structurally and semantically
 // correct based on the given schemas.
-func (doc *Document) ValidateTemplate() []error {
+func (doc *Document) ValidateTemplate() ([]error, []error) {
 	if doc.Schemas == nil || doc.Schemas.Input == nil {
-		return []error{fmt.Errorf("input schema required")}
-	}
-
-	if doc.Schemas.Output == nil {
-		return nil
+		return nil, []error{fmt.Errorf("input schema required")}
 	}
 
 	doc.Schemas.Input["type"] = "object"
 	sin, err := compileSchema(path.Join(doc.Filename, "schemas", "input"), doc.Schemas.Dialect, doc.Schemas.Input)
 	if err != nil {
-		return []error{fmt.Errorf("error validating template: %w", err)}
+		return nil, []error{fmt.Errorf("error validating template: %w", err)}
+	}
+
+	if doc.Schemas.Output == nil {
+		return nil, nil
 	}
 
 	sout, err := compileSchema(path.Join(doc.Filename, "schemas", "output"), doc.Schemas.Dialect, doc.Schemas.Output)
 	if err != nil {
-		return []error{fmt.Errorf("error validating template: %w", err)}
+		return nil, []error{fmt.Errorf("error validating template: %w", err)}
 	}
 
 	ctx := newContext(doc.Filename, "template")
 	example, err := generateExample(sin)
 	if err != nil {
-		return []error{fmt.Errorf("error validating template: %w", err)}
+		return nil, []error{fmt.Errorf("error validating template: %w", err)}
 	}
 	validateTemplate(ctx, sout, doc.Template, example.(map[string]interface{}))
 
-	return ctx.Errors.Value
+	warnings := []error{}
+	if ctx.Meta.TemplateComplexity > 50 {
+		warnings = append(warnings, fmt.Errorf("template complexity is high: %d", ctx.Meta.TemplateComplexity))
+	}
+
+	return warnings, ctx.Meta.Errors
 }
 
 // ValidateOutput validates the rendered output against the given output schema.
@@ -135,5 +144,5 @@ func (doc *Document) Render(params map[string]interface{}) (interface{}, []error
 		return append(a, b...)
 	}
 
-	return render(ctx, doc.Template, params), ctx.Errors.Value
+	return render(ctx, doc.Template, params), ctx.Meta.Errors
 }

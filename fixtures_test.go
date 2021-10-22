@@ -73,7 +73,8 @@ func TestFixtures(t *testing.T) {
 
 			for i, test := range f.Tests {
 				t.Run(fmt.Sprintf("%s-%d-%s", file.Name(), i, test.Name), func(t *testing.T) {
-					if test.ErrorsFail(t, f.Document.ValidateTemplate()) {
+					_, errs := f.Document.ValidateTemplate()
+					if test.ErrorsFail(t, errs) {
 						return
 					}
 
