@@ -5,7 +5,6 @@ document:
       properties:
         name:
           type: string
-      additionalProperties: false
     output:
       type: object
       properties:

@@ -1,0 +1,11 @@
+document:
+  schemas:
+    input: {}
+    output:
+      type: string
+  template: ${1 + 2 +}
+tests:
+  - input: {}
+    errors:
+      - unable to compile
+    expected: {}

@@ -1,0 +1,13 @@
+document:
+  schemas:
+    input: {}
+    output:
+      type: array
+      items:
+        type: integer
+  template: 0
+tests:
+  - input: {}
+    errors:
+      - type number not allowed, expecting [array]
+    expected: {}

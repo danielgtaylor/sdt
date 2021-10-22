@@ -1,0 +1,12 @@
+document:
+  schemas:
+    input: {}
+    output:
+      type: string
+  template:
+    $for: ${invalid / 0}
+tests:
+  - input: {}
+    errors:
+      - unable to test $for expression
+    expected: {}

@@ -1,0 +1,21 @@
+document:
+  schemas:
+    dialect: http://json-schema.org/schema#
+    input:
+      type: object
+      properties:
+        name:
+          type: string
+    output:
+      type: object
+      additionalProperties:
+        type: string
+  template:
+    foo: one
+    bar: ${name}
+tests:
+  - input:
+      name: additional
+    expected:
+      foo: one
+      bar: additional

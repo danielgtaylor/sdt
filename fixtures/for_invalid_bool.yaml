@@ -1,0 +1,12 @@
+document:
+  schemas:
+    input: {}
+    output:
+      type: string
+  template:
+    $for: ${true}
+tests:
+  - input: {}
+    errors:
+      - $for expresssion must result in an array
+    expected: {}

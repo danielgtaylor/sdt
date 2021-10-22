@@ -1,0 +1,12 @@
+document:
+  schemas:
+    input: {}
+    output:
+      type: string
+  template:
+    $flatten: "foo"
+tests:
+  - input: {}
+    errors:
+      - flatten must be an array
+    expected: {}
