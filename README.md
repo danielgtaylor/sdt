@@ -1,6 +1,6 @@
 # Structured Data Templates
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/danielgtaylor/sdt.svg)](https://pkg.go.dev/github.com/danielgtaylor/sdt) [![Go Report Card](https://goreportcard.com/badge/github.com/danielgtaylor/sdt)](https://goreportcard.com/report/github.com/danielgtaylor/sdt)
+[![Go Reference](https://pkg.go.dev/badge/github.com/danielgtaylor/sdt.svg)](https://pkg.go.dev/github.com/danielgtaylor/sdt) [![Go Report Card](https://goreportcard.com/badge/github.com/danielgtaylor/sdt)](https://goreportcard.com/report/github.com/danielgtaylor/sdt) ![Build Status](https://github.com/github/danielgtaylor/sdt/workflows/test.yml/badge.svg?branch=main)
 
 Structured data templates are a templating engine that takes a simplified set of input parameters and transforms them into a complex structured data output. Both the inputs and outputs can be validated against a schema.
 
@@ -243,7 +243,7 @@ You would get as output:
 
 ### Flatten
 
-The `$flatten` special operator takes an array of arrays and flattens them into a single array. This can be useful for a number of scenarios like:
+The `$flatten` special operator takes an array of arrays and flattens them one level into a single array. This can be useful for a number of scenarios like:
 
 - Adding default items to a `$for` loop output
 - Having one item of a `$for` clause generate multiple outputs
