@@ -32,6 +32,8 @@ func init() {
 	}))
 }
 
+var useColor bool
+
 var renderExample = `sdt render doc.yaml <params.yaml
 sdt render doc.yaml name: Alice, param2: 123
 sdt render doc.yaml <params.yaml name: override`
@@ -45,18 +47,30 @@ func highlight(lexer string, data []byte) ([]byte, error) {
 	return []byte(sb.String()), nil
 }
 
+func printColor(color int, label string, err error) {
+	colorized := label
+	if useColor {
+		colorized = fmt.Sprintf("\x1b[0;%dm%s:\x1b[0m", color, label)
+	}
+	fmt.Fprintf(os.Stderr, "%s %v\n", colorized, err)
+}
+
 func mustLoad(filename string) *sdt.Document {
 	doc, err := sdt.NewFromFile(filename)
 	if err != nil {
-		fmt.Printf("❌ Unable to load %s\n%v", filename, err)
+		fmt.Fprintf(os.Stderr, "❌ Unable to load %s:\n%v", filename, err)
 		os.Exit(1)
 	}
 
 	// Validate template output format
-	if errs := doc.ValidateTemplate(); len(errs) > 0 {
-		fmt.Println("❌ Error while validating template:")
+	warnings, errs := doc.ValidateTemplate()
+	for _, warning := range warnings {
+		printColor(33, "warning", warning)
+	}
+	if len(errs) > 0 {
+		fmt.Fprintln(os.Stderr, "❌ Error while validating template:")
 		for _, err := range errs {
-			fmt.Println(err)
+			fmt.Fprintf(os.Stderr, "%v\n", err)
 		}
 		os.Exit(1)
 	}
@@ -65,6 +79,12 @@ func mustLoad(filename string) *sdt.Document {
 }
 
 func main() {
+	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) != 0 {
+		if os.Getenv("NO_COLOR") == "" {
+			useColor = true
+		}
+	}
+
 	root := cobra.Command{
 		Long:    "Structured Data Templates",
 		Example: "sdt validate doc.yaml\nsdt render doc.yaml <params.yaml some: value, other: 123",
@@ -90,7 +110,7 @@ func main() {
 
 			params, err := shorthand.GetInput(args[1:])
 			if err != nil {
-				fmt.Printf("❌ Error getting input\n%v", err)
+				fmt.Fprintf(os.Stderr, "❌ Error getting input\n%v", err)
 				os.Exit(1)
 			}
 			if params == nil {
@@ -99,25 +119,25 @@ func main() {
 
 			// Validate params from template input schema
 			if err := doc.ValidateInput(params); err != nil {
-				fmt.Println("❌ Error while validating input params:")
-				fmt.Println(err)
+				fmt.Fprintln(os.Stderr, "❌ Error while validating input params:")
+				fmt.Fprintf(os.Stderr, "%v\n", err)
 				os.Exit(1)
 			}
 
 			// Render the output
 			rendered, errs := doc.Render(params)
 			if len(errs) > 0 {
-				fmt.Println("❌ Error while rendering template:")
+				fmt.Fprintln(os.Stderr, "❌ Error while rendering template:")
 				for _, err := range errs {
-					fmt.Println(err)
+					fmt.Fprintf(os.Stderr, "%v\n", err)
 				}
 				os.Exit(1)
 			}
 
 			// Confirm that the output conforms to the schema now that it's rendered.
 			if err := doc.ValidateOutput(rendered); err != nil {
-				fmt.Println("❌ Error validating rendered output:")
-				fmt.Println(err)
+				fmt.Fprintln(os.Stderr, "❌ Error validating rendered output:")
+				fmt.Fprintf(os.Stderr, "%v\n", err)
 				os.Exit(1)
 			}
 
@@ -126,13 +146,11 @@ func main() {
 			// Only output color if the output isn't redirected and NO_COLOR has not
 			// been set by the user in their environment.
 			var stdout io.Writer = os.Stdout
-			if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) != 0 {
-				if os.Getenv("NO_COLOR") == "" {
-					out, _ = highlight("json", out)
+			if useColor {
+				out, _ = highlight("json", out)
 
-					// Support colored output across operating systems.
-					stdout = colorable.NewColorableStdout()
-				}
+				// Support colored output across operating systems.
+				stdout = colorable.NewColorableStdout()
 			}
 			fmt.Fprintln(stdout, string(out))
 		},

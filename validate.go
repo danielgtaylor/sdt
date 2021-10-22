@@ -111,6 +111,7 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 
 	if len(matches) > 0 {
 		for _, match := range matches {
+			ctx.Meta.TemplateComplexity++
 			_, err := expr.Compile(match[2:len(match)-1], expr.Env(paramsExample))
 			if err != nil {
 				ctx.AddError(fmt.Errorf("error validating template: unable to compile expression '%s': %v", match, err))
@@ -147,11 +148,13 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 
 func validateBranch(ctx *context, s *jsonschema.Schema, t map[string]interface{}, paramsExample map[string]interface{}) {
 	if t["$then"] == nil {
+		ctx.Meta.TemplateComplexity++
 		ctx.AddError(fmt.Errorf("error validating template:  $then clause is required for $if branching"))
 	} else {
 		validateTemplate(ctx.WithPath("$then"), s, t["$then"], paramsExample)
 	}
 	if t["$else"] != nil {
+		ctx.Meta.TemplateComplexity++
 		validateTemplate(ctx.WithPath("$else"), s, t["$else"], paramsExample)
 	}
 }
@@ -161,6 +164,7 @@ func validateLoop(ctx *context, s *jsonschema.Schema, t map[string]interface{}, 
 	var item interface{}
 	switch v := t["$for"].(type) {
 	case string:
+		ctx.Meta.TemplateComplexity++
 		if !strings.HasPrefix(v, "${") {
 			ctx.AddError(fmt.Errorf("error validating template: $for expression must use ${...} interpolation syntax"))
 			return
@@ -187,6 +191,7 @@ func validateLoop(ctx *context, s *jsonschema.Schema, t map[string]interface{}, 
 	if t["$each"] == nil {
 		ctx.AddError(fmt.Errorf("error validating template: $each clause is required for $for looping"))
 	} else {
+		ctx.Meta.TemplateComplexity++
 		paramsCopy := map[string]interface{}{}
 		for k, v := range paramsExample {
 			paramsCopy[k] = v
@@ -219,6 +224,7 @@ func validateLoop(ctx *context, s *jsonschema.Schema, t map[string]interface{}, 
 }
 
 func validateFlatten(ctx *context, s *jsonschema.Schema, t map[string]interface{}, paramsExample map[string]interface{}) {
+	ctx.Meta.TemplateComplexity++
 	switch flat := t["$flatten"].(type) {
 	case []interface{}:
 		for i, item := range flat {
