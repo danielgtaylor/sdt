@@ -19,6 +19,18 @@ func generateExample(s *jsonschema.Schema) (interface{}, error) {
 		return nil, fmt.Errorf("multiple types not supported")
 	}
 
+	if len(s.Examples) > 0 {
+		return convertNumberIfNeeded(s.Examples[0], s), nil
+	}
+
+	if s.Default != nil {
+		return convertNumberIfNeeded(s.Default, s), nil
+	}
+
+	if len(s.Enum) > 0 {
+		return convertNumberIfNeeded(s.Enum[0], s), nil
+	}
+
 	switch s.Types[0] {
 	case "boolean":
 		return true, nil

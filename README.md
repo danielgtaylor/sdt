@@ -63,8 +63,11 @@ You can run the example like so:
 # Validate the template
 $ sdt validate ./samples/greeting.yaml
 
+# Generate an example params file
+$ sdt example -f yaml ./samples/hello/hello.yaml >params.yaml
+
 # Render by passing in a file
-$ sdt render ./samples/greeting.yaml <./samples/params.yaml
+$ sdt render ./samples/hello/hello.yaml <params.yaml
 {
   "greeting": "Hello, SDT!"
 }
@@ -116,13 +119,13 @@ These features make use of a basic expression language.
 String interpolation, branching conditions, and loop variable selection all use an expression language. This allows you to make simple comparisons of the parameter context data. Examples:
 
 - `foo > 50`
-- `len(item.bars) <= 5 || my_override`
-- `name contains "sdt"`
+- `len(item.bars) <= 5 or my_override`
+- `"sdt" in name`
 - `name startsWith "sdt"`
 - `"foo" in ["foo", "bar"]`
 - `loop.index + 1`
 
-See [antonmedv/expr language definition](https://github.com/antonmedv/expr/blob/master/docs/Language-Definition.md) for details.
+See [danielgtaylor/mexpr syntax](https://github.com/danielgtaylor/mexpr#syntax) for details.
 
 ### String Interpolation
 

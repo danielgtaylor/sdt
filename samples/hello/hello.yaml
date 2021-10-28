@@ -7,6 +7,7 @@ schemas:
       name:
         type: string
         default: world
+        examples: [SDT]
   output:
     # Output schema goes here, also supports refs:
     type: object

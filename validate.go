@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/antonmedv/expr"
+	"github.com/danielgtaylor/mexpr"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 
 	// Enable loading schemas via HTTP references.
@@ -112,9 +112,9 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 	if len(matches) > 0 {
 		for _, match := range matches {
 			ctx.Meta.TemplateComplexity++
-			_, err := expr.Compile(match[2:len(match)-1], expr.Env(paramsExample))
+			_, err := mexpr.Parse(match[2:len(match)-1], paramsExample)
 			if err != nil {
-				ctx.AddError(fmt.Errorf("error validating template: unable to compile expression '%s': %v", match, err))
+				ctx.AddError(fmt.Errorf("error validating template: unable to compile expression '%s': %v", match, err.Pretty(match[2:len(match)-1])))
 			}
 		}
 	}
@@ -122,9 +122,9 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 	if len(matches) == 1 && len(matches[0]) == len(template.(string)) {
 		// This is a single value string template that can return any type.
 		t := template.(string)
-		out, err := expr.Eval(t[2:len(t)-1], paramsExample)
+		out, err := mexpr.Eval(t[2:len(t)-1], paramsExample)
 		if err != nil {
-			ctx.AddError(fmt.Errorf("error validating template: unable to eval expression '%s': %v", t[2:len(t)-1], err))
+			ctx.AddError(fmt.Errorf("error validating template: unable to eval expression '%s': %v", t[2:len(t)-1], err.Pretty(t[2:len(t)-1])))
 			return
 		}
 		outJSONType := getJSONType(out)
@@ -147,6 +147,17 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 }
 
 func validateBranch(ctx *context, s *jsonschema.Schema, t map[string]interface{}, paramsExample map[string]interface{}) {
+	if s, ok := t["$if"].(string); ok {
+		if !strings.HasPrefix(s, "${") {
+			ctx.AddError(fmt.Errorf("error validating template: $if expression must use ${...} interpolation syntax"))
+			return
+		}
+		_, err := mexpr.Parse(s[2:len(s)-1], paramsExample)
+		if err != nil {
+			ctx.AddError(fmt.Errorf("error validating template: unable to test $if expression: %v", err))
+			return
+		}
+	}
 	if t["$then"] == nil {
 		ctx.Meta.TemplateComplexity++
 		ctx.AddError(fmt.Errorf("error validating template:  $then clause is required for $if branching"))
@@ -169,7 +180,7 @@ func validateLoop(ctx *context, s *jsonschema.Schema, t map[string]interface{}, 
 			ctx.AddError(fmt.Errorf("error validating template: $for expression must use ${...} interpolation syntax"))
 			return
 		}
-		results, err := expr.Eval(v[2:len(v)-1], paramsExample)
+		results, err := mexpr.Eval(v[2:len(v)-1], paramsExample)
 		if err != nil {
 			ctx.AddError(fmt.Errorf("error validating template: unable to test $for expression: %v", err))
 			return

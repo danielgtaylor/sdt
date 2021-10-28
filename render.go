@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/antonmedv/expr"
+	"github.com/danielgtaylor/mexpr"
 )
 
 // This is the regex used to find/replace ${...} expressions within strings.
@@ -91,18 +91,18 @@ func handleInterpolation(ctx *context, v string, params map[string]interface{}) 
 	// expression given the current context.
 	matches := interpolationRe.FindAllString(v, -1)
 	if len(matches) == 1 && len(matches[0]) == len(v) {
-		result, err := expr.Eval(v[2:len(v)-1], params)
+		result, err := mexpr.Eval(v[2:len(v)-1], params)
 		if err != nil {
-			return ctx.AddError(fmt.Errorf("error rendering: %w", err))
+			return ctx.AddError(fmt.Errorf("error rendering: %s", err.Pretty(v[2:len(v)-1])))
 		}
 		return result
 	}
 
 	// Everything else generates a string as output.
 	interpolated := interpolationRe.ReplaceAllStringFunc(v, func(v string) string {
-		result, err := expr.Eval(v[2:len(v)-1], params)
+		result, err := mexpr.Eval(v[2:len(v)-1], params)
 		if err != nil {
-			ctx.AddError(fmt.Errorf("error rendering: %w", err))
+			ctx.AddError(fmt.Errorf("error rendering: %s", err.Pretty(v[2:len(v)-1])))
 			return ""
 		}
 		if result != nil {

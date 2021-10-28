@@ -45,14 +45,23 @@ func NewFromFile(filename string) (*Document, error) {
 }
 
 func NewFromBytes(filename string, data []byte) (*Document, error) {
-	doc := &Document{}
+	doc := New(filename)
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, err
 	}
 
-	doc.Filename = filename
-
 	return doc, nil
+}
+
+func (doc *Document) Example() (interface{}, error) {
+	if doc.Schemas == nil || doc.Schemas.Input == nil {
+		return nil, nil
+	}
+	s, err := compileSchema(path.Join(doc.Filename, "schemas", "input"), doc.Schemas.Dialect, doc.Schemas.Input)
+	if err != nil {
+		return nil, fmt.Errorf("error compiling schema: %w", err)
+	}
+	return generateExample(s)
 }
 
 // ValidateInput validates that input params are correct based on the schema.
