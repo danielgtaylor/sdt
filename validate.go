@@ -106,6 +106,25 @@ func getJSONType(value interface{}) string {
 	}[reflect.TypeOf(value).Kind()]
 }
 
+// wrongTypeError adds an error to the context with information about the
+// expected type. If it's an array or object, additional info about the
+// items and properties is included to help with debugging.
+func wrongTypeError(ctx *context, found string, expected *jsonschema.Schema) {
+	extra := ""
+	if hasType(expected, "object") {
+		extra = fmt.Sprintf(" with properties %v", getKeys(expected.Properties))
+	}
+	if hasType(expected, "array") {
+		items := getItems(expected)
+		extra = fmt.Sprintf(" with %v items", items.Types)
+		if hasType(items, "object") {
+			extra += fmt.Sprintf(" with properties %v", getKeys(items.Properties))
+		}
+	}
+
+	ctx.AddError(fmt.Errorf("error validating template: type %s not allowed, expecting %v%s", found, expected.Types, extra))
+}
+
 func validateString(ctx *context, s *jsonschema.Schema, template interface{}, paramsExample map[string]interface{}) {
 	matches := interpolationRe.FindAllString(template.(string), -1)
 
@@ -142,7 +161,7 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 
 	// This will result in a string as output.
 	if !hasType(s, "string") {
-		ctx.AddError(fmt.Errorf("error validating template: string not allowed, expecting %v", s.Types))
+		wrongTypeError(ctx, "string", s)
 	}
 }
 
@@ -307,15 +326,7 @@ func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, 
 	}
 
 	if !found {
-		extra := ""
-		if hasType(s, "object") {
-			extra = fmt.Sprintf(" with properties %v", getKeys(s.Properties))
-		}
-		if hasType(s, "array") {
-			extra = fmt.Sprintf(" with %v items", getItems(s).Types)
-		}
-
-		ctx.AddError(fmt.Errorf("error validating template: type %s not allowed, expecting %v%s", jsonType, s.Types, extra))
+		wrongTypeError(ctx, jsonType, s)
 		return
 	}
 
