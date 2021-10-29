@@ -119,7 +119,7 @@ These features make use of a basic expression language.
 String interpolation, branching conditions, and loop variable selection all use an expression language. This allows you to make simple comparisons of the parameter context data. Examples:
 
 - `foo > 50`
-- `len(item.bars) <= 5 or my_override`
+- `item.bars.length <= 5 or my_override`
 - `"sdt" in name`
 - `name startsWith "sdt"`
 - `"foo" in ["foo", "bar"]`
