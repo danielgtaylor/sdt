@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"path"
 
+	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,6 +25,9 @@ type Document struct {
 	Filename string      `json:"-" yaml:"-"`
 	Schemas  *Schemas    `json:"schemas" yaml:"schemas"`
 	Template interface{} `json:"template" yaml:"template"`
+
+	inputSchema  *jsonschema.Schema
+	outputSchema *jsonschema.Schema
 }
 
 // New creates a new document.
@@ -53,15 +57,41 @@ func NewFromBytes(filename string, data []byte) (*Document, error) {
 	return doc, nil
 }
 
+func (doc *Document) LoadSchemas() error {
+	if doc.Schemas == nil {
+		return nil
+	}
+
+	if doc.inputSchema == nil && doc.Schemas.Input != nil {
+		doc.Schemas.Input["type"] = "object"
+		if doc.Schemas.Input["additionalProperties"] == nil {
+			// Input should be strict!
+			doc.Schemas.Input["additionalProperties"] = false
+		}
+		s, err := compileSchema(path.Join(doc.Filename, "schemas", "input"), doc.Schemas.Dialect, doc.Schemas.Input)
+		if err != nil {
+			return fmt.Errorf("error compiling input schema: %w", err)
+		}
+		doc.inputSchema = s
+	}
+
+	if doc.outputSchema == nil && doc.Schemas.Output != nil {
+		s, err := compileSchema(path.Join(doc.Filename, "schemas", "output"), doc.Schemas.Dialect, doc.Schemas.Output)
+		if err != nil {
+			return fmt.Errorf("error compiling output schema: %w", err)
+		}
+		doc.outputSchema = s
+	}
+
+	return nil
+}
+
 func (doc *Document) Example() (interface{}, error) {
 	if doc.Schemas == nil || doc.Schemas.Input == nil {
 		return nil, nil
 	}
-	s, err := compileSchema(path.Join(doc.Filename, "schemas", "input"), doc.Schemas.Dialect, doc.Schemas.Input)
-	if err != nil {
-		return nil, fmt.Errorf("error compiling schema: %w", err)
-	}
-	return generateExample(s)
+	doc.LoadSchemas()
+	return generateExample(doc.inputSchema)
 }
 
 // ValidateInput validates that input params are correct based on the schema.
@@ -70,21 +100,14 @@ func (doc *Document) ValidateInput(params map[string]interface{}) error {
 		return nil
 	}
 
-	doc.Schemas.Input["type"] = "object"
-	if doc.Schemas.Input["additionalProperties"] == nil {
-		// Input should be strict!
-		doc.Schemas.Input["additionalProperties"] = false
-	}
-	s, err := compileSchema(path.Join(doc.Filename, "schemas", "input"), doc.Schemas.Dialect, doc.Schemas.Input)
-	if err != nil {
-		return fmt.Errorf("error compiling schema: %w", err)
-	}
-	err = s.Validate(params)
+	doc.LoadSchemas()
+
+	err := doc.inputSchema.Validate(params)
 	if err != nil {
 		return fmt.Errorf("error validating params against schema: %w", err)
 	}
 
-	setDefaults(s, params)
+	setDefaults(doc.inputSchema, params)
 	return nil
 }
 
@@ -95,27 +118,18 @@ func (doc *Document) ValidateTemplate() ([]error, []error) {
 		return nil, []error{fmt.Errorf("input schema required")}
 	}
 
-	doc.Schemas.Input["type"] = "object"
-	sin, err := compileSchema(path.Join(doc.Filename, "schemas", "input"), doc.Schemas.Dialect, doc.Schemas.Input)
-	if err != nil {
-		return nil, []error{fmt.Errorf("error validating template: %w", err)}
-	}
+	doc.LoadSchemas()
 
 	if doc.Schemas.Output == nil {
 		return nil, nil
 	}
 
-	sout, err := compileSchema(path.Join(doc.Filename, "schemas", "output"), doc.Schemas.Dialect, doc.Schemas.Output)
-	if err != nil {
-		return nil, []error{fmt.Errorf("error validating template: %w", err)}
-	}
-
 	ctx := newContext(doc.Filename, "template")
-	example, err := generateExample(sin)
+	example, err := generateExample(doc.inputSchema)
 	if err != nil {
 		return nil, []error{fmt.Errorf("error validating template: %w", err)}
 	}
-	validateTemplate(ctx, sout, doc.Template, example.(map[string]interface{}))
+	validateTemplate(ctx, doc.outputSchema, doc.Template, example.(map[string]interface{}))
 
 	warnings := []error{}
 	if ctx.Meta.TemplateComplexity > 50 {
@@ -131,12 +145,9 @@ func (doc *Document) ValidateOutput(output interface{}) error {
 		return nil
 	}
 
-	s, err := compileSchema(path.Join(doc.Filename, "schemas", "output"), doc.Schemas.Dialect, doc.Schemas.Output)
-	if err != nil {
-		return fmt.Errorf("error compiling schema: %w", err)
-	}
+	doc.LoadSchemas()
 
-	err = s.Validate(output)
+	err := doc.outputSchema.Validate(output)
 	if err != nil {
 		return fmt.Errorf("error validating output against schema: %w", err)
 	}
@@ -146,12 +157,8 @@ func (doc *Document) ValidateOutput(output interface{}) error {
 
 // Render the template into a data structure.
 func (doc *Document) Render(params map[string]interface{}) (interface{}, []error) {
+	doc.LoadSchemas()
+	setDefaults(doc.inputSchema, params)
 	ctx := newContext(doc.Filename, "template")
-
-	// Built-in function definitions.
-	params["append"] = func(a []interface{}, b []interface{}) []interface{} {
-		return append(a, b...)
-	}
-
 	return render(ctx, doc.Template, params), ctx.Meta.Errors
 }
