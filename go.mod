@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/alecthomas/chroma v0.9.4
-	github.com/danielgtaylor/mexpr v1.1.0
+	github.com/danielgtaylor/mexpr v1.2.0
 	github.com/danielgtaylor/shorthand v1.0.0
 	github.com/mattn/go-colorable v0.1.11
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
