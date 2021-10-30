@@ -134,6 +134,9 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 			_, err := mexpr.Parse(match[2:len(match)-1], paramsExample)
 			if err != nil {
 				ctx.AddError(fmt.Errorf("error validating template: unable to compile expression '%s': %v", match, err.Pretty(match[2:len(match)-1])))
+				if len(matches) == 1 && len(matches[0]) == len(template.(string)) {
+					return
+				}
 			}
 		}
 	}
