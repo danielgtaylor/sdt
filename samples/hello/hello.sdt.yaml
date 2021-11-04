@@ -14,23 +14,7 @@ schemas:
     properties:
       greeting:
         type: string
-        description: I am a greeting
-      another:
-        type: string
-      num:
-        type: integer
+        description: A greeting for the user.
 template:
   # Templated output structure goes here
-  greeting:
-    $if: ${name == "foo"}
-    $then: ${name}
-    $else:
-      $if: ${something}
-      $then: foo
-  another:
-    $if: ${foo}
-    $then: ${foo}
-  num:
-    $if: ${foo}
-    $then: ${123 * 5}
-    $else: 456.1
+  greeting: Hello, ${name}!

@@ -2,7 +2,6 @@ package sdt
 
 import (
 	"fmt"
-	"reflect"
 	"regexp"
 
 	"github.com/danielgtaylor/mexpr"
@@ -11,13 +10,31 @@ import (
 // This is the regex used to find/replace ${...} expressions within strings.
 var interpolationRe = regexp.MustCompile(`[$][{].*?[}]`)
 
+func isZero(v interface{}) bool {
+	switch t := v.(type) {
+	case bool:
+		return !t
+	case int, int8, int16, int32, uint, uint8, uint16, uint32, float32, float64:
+		return t == 0
+	case string:
+		return len(t) == 0
+	case []byte:
+		return len(t) == 0
+	case []interface{}:
+		return len(t) == 0
+	case map[string]interface{}:
+		return len(t) == 0
+	}
+	return false
+}
+
 func handleBranch(ctx *context, v map[string]interface{}, params map[string]interface{}) interface{} {
 	result := v["$if"]
 	if s, ok := result.(string); ok {
 		result = handleInterpolation(ctx, s, params)
 	}
 
-	if result != nil && !reflect.ValueOf(result).IsZero() {
+	if result != nil && !isZero(result) {
 		return render(ctx, v["$then"], params)
 	} else if v["$else"] != nil {
 		return render(ctx, v["$else"], params)
