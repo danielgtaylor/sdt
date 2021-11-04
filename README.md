@@ -1,8 +1,10 @@
 # Structured Data Templates
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/danielgtaylor/sdt.svg)](https://pkg.go.dev/github.com/danielgtaylor/sdt) [![Go Report Card](https://goreportcard.com/badge/github.com/danielgtaylor/sdt)](https://goreportcard.com/report/github.com/danielgtaylor/sdt) ![Build Status](https://github.com/danielgtaylor/sdt/actions/workflows/test.yaml/badge.svg?branch=main) [![codecov](https://codecov.io/gh/danielgtaylor/sdt/branch/main/graph/badge.svg?token=KB0QD0H6HP)](https://codecov.io/gh/danielgtaylor/sdt)
+[![Go Reference](https://pkg.go.dev/badge/github.com/danielgtaylor/sdt.svg)](https://pkg.go.dev/github.com/danielgtaylor/sdt) [![Go Report Card](https://goreportcard.com/badge/github.com/danielgtaylor/sdt)](https://goreportcard.com/report/github.com/danielgtaylor/sdt) ![Build Status](https://github.com/danielgtaylor/sdt/actions/workflows/test.yaml/badge.svg?branch=main) [![codecov](https://codecov.io/gh/danielgtaylor/sdt/branch/main/graph/badge.svg?token=KB0QD0H6HP)](https://codecov.io/gh/danielgtaylor/sdt) [![VS Code Extension](https://img.shields.io/badge/vscode-extension-blue)](https://marketplace.visualstudio.com/items?itemName=danielgtaylor.structured-data-templates)
 
 Structured data templates are a templating engine that takes a simplified set of input parameters and transforms them into a complex structured data output. Both the inputs and outputs can be validated against a schema.
+
+Be sure to check out the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=danielgtaylor.structured-data-templates) for syntax highlighting and schema validation as you type.
 
 The goals of this project are to:
 
