@@ -69,6 +69,12 @@ func (c *context) FullPath() string {
 // AddError adds an error into the rendering context at the current path. As
 // a convenience it returns nil.
 func (c *context) AddError(value error) interface{} {
+	return c.AddErrorOffset(value, 0)
+}
+
+// AddErrorOffset adds an error into the rendering context at the current path
+// plus an additional offset. As a convenience it returns nil.
+func (c *context) AddErrorOffset(value error, offset int) interface{} {
 	source := ""
 	if c.AST != nil {
 		path, err := yaml.PathString(refToPath(c.Path))
@@ -77,12 +83,14 @@ func (c *context) AddError(value error) interface{} {
 		}
 
 		if node, err := path.FilterFile(c.AST); err == nil {
-			// TODO: modify and then return the token position based on the specific
-			// error...
-			// node.GetToken().Position.Column += 2...
+			// Modify and then return the token position based on the offset.
+			pos := node.GetToken().Position
+			pos.Column += offset
 
 			var pp printer.Printer
 			source = pp.PrintErrorToken(node.GetToken(), false)
+
+			pos.Column -= offset
 		}
 	}
 

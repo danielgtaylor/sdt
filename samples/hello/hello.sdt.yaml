@@ -15,6 +15,7 @@ schemas:
       greeting:
         type: string
         description: A greeting for the user.
+    additionalProperties: false
 template:
   # Templated output structure goes here
   greeting: Hello, ${name}!

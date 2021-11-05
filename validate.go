@@ -126,27 +126,28 @@ func wrongTypeError(ctx *context, found string, expected *jsonschema.Schema) {
 }
 
 func validateString(ctx *context, s *jsonschema.Schema, template interface{}, paramsExample map[string]interface{}) {
-	matches := interpolationRe.FindAllString(template.(string), -1)
+	matches := interpolationRe.FindAllStringIndex(template.(string), -1)
 
 	if len(matches) > 0 {
 		for _, match := range matches {
+			expr := template.(string)[match[0]+2 : match[1]-1]
 			ctx.Meta.TemplateComplexity++
-			_, err := mexpr.Parse(match[2:len(match)-1], paramsExample)
+			_, err := mexpr.Parse(expr, paramsExample)
 			if err != nil {
-				ctx.AddError(fmt.Errorf("error validating template: unable to compile expression '%s': %v", match, err.Pretty(match[2:len(match)-1])))
-				if len(matches) == 1 && len(matches[0]) == len(template.(string)) {
+				ctx.AddErrorOffset(fmt.Errorf("error validating template: unable to compile expression '%s': %v", expr, err), match[0]+err.Offset()+2)
+				if len(matches) == 1 && match[0] == 0 && match[1] == len(template.(string)) {
 					return
 				}
 			}
 		}
 	}
 
-	if len(matches) == 1 && len(matches[0]) == len(template.(string)) {
+	if len(matches) == 1 && matches[0][0] == 0 && matches[0][1] == len(template.(string)) {
 		// This is a single value string template that can return any type.
 		t := template.(string)
 		out, err := mexpr.Eval(t[2:len(t)-1], paramsExample)
 		if err != nil {
-			ctx.AddError(fmt.Errorf("error validating template: unable to eval expression '%s': %v", t[2:len(t)-1], err.Pretty(t[2:len(t)-1])))
+			ctx.AddErrorOffset(fmt.Errorf("error validating template: unable to eval expression '%s': %v", t[2:len(t)-1], err), err.Offset()+2)
 			return
 		}
 		outJSONType := getJSONType(out)
@@ -175,7 +176,7 @@ func validateBranch(ctx *context, s *jsonschema.Schema, t map[string]interface{}
 		} else {
 			_, err := mexpr.Parse(s[2:len(s)-1], paramsExample)
 			if err != nil {
-				ctx.WithPath("$if").AddError(fmt.Errorf("error validating template: unable to test $if expression: %v", err))
+				ctx.WithPath("$if").AddErrorOffset(fmt.Errorf("error validating template: unable to test $if expression: %v", err), err.Offset()+2)
 			}
 		}
 	}
@@ -202,7 +203,7 @@ func validateLoop(ctx *context, s *jsonschema.Schema, t map[string]interface{}, 
 		} else {
 			results, err := mexpr.Eval(v[2:len(v)-1], paramsExample)
 			if err != nil {
-				ctx.WithPath("$for").AddError(fmt.Errorf("error validating template: unable to test $for expression: %v", err))
+				ctx.WithPath("$for").AddErrorOffset(fmt.Errorf("error validating template: unable to test $for expression: %v", err), err.Offset()+2)
 			} else {
 				if a, ok := results.([]interface{}); ok {
 					item = a[0]
@@ -344,7 +345,7 @@ func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, 
 					continue
 				}
 
-				ctx.AddError(fmt.Errorf("error validating template: property %s not in allowed set %v", k, getKeys(s.Properties)))
+				ctx.WithPath(k).AddError(fmt.Errorf("error validating template: property %s not in allowed set %v", k, getKeys(s.Properties)))
 				continue
 			}
 
