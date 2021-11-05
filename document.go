@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"path"
 
+	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/parser"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v3"
 )
@@ -26,6 +28,7 @@ type Document struct {
 	Schemas  *Schemas    `json:"schemas" yaml:"schemas"`
 	Template interface{} `json:"template" yaml:"template"`
 
+	ast          *ast.File
 	inputSchema  *jsonschema.Schema
 	outputSchema *jsonschema.Schema
 }
@@ -54,7 +57,18 @@ func NewFromBytes(filename string, data []byte) (*Document, error) {
 		return nil, err
 	}
 
+	doc.LoadAST(data)
+
 	return doc, nil
+}
+
+func (doc *Document) LoadAST(data []byte) error {
+	astFile, err := parser.ParseBytes(data, 0)
+	if err != nil {
+		return err
+	}
+	doc.ast = astFile
+	return nil
 }
 
 func (doc *Document) LoadSchemas() error {
@@ -124,7 +138,7 @@ func (doc *Document) ValidateTemplate() ([]error, []error) {
 		return nil, nil
 	}
 
-	ctx := newContext(doc.Filename, "template")
+	ctx := newContext(doc.Filename, doc.ast, "template")
 	example, err := generateExample(doc.inputSchema)
 	if err != nil {
 		return nil, []error{fmt.Errorf("error validating template: %w", err)}
@@ -159,6 +173,6 @@ func (doc *Document) ValidateOutput(output interface{}) error {
 func (doc *Document) Render(params map[string]interface{}) (interface{}, []error) {
 	doc.LoadSchemas()
 	setDefaults(doc.inputSchema, params)
-	ctx := newContext(doc.Filename, "template")
+	ctx := newContext(doc.Filename, doc.ast, "template")
 	return render(ctx, doc.Template, params), ctx.Meta.Errors
 }

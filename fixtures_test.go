@@ -73,6 +73,8 @@ func getFixtures(t testing.TB) []*Fixture {
 			}
 			f.Name = file.Name()
 			f.Document.Filename = filename + "#/document"
+			docBytes, _ := yaml.Marshal(f.Document)
+			f.Document.LoadAST(docBytes)
 
 			fixtures = append(fixtures, f)
 		}
