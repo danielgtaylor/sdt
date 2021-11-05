@@ -171,19 +171,18 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 func validateBranch(ctx *context, s *jsonschema.Schema, t map[string]interface{}, paramsExample map[string]interface{}) {
 	if s, ok := t["$if"].(string); ok {
 		if !strings.HasPrefix(s, "${") {
-			ctx.AddError(fmt.Errorf("error validating template: $if expression must use ${...} interpolation syntax"))
-			return
-		}
-		_, err := mexpr.Parse(s[2:len(s)-1], paramsExample)
-		if err != nil {
-			ctx.AddError(fmt.Errorf("error validating template: unable to test $if expression: %v", err))
-			return
+			ctx.WithPath("$if").AddError(fmt.Errorf("error validating template: $if expression must use ${...} interpolation syntax"))
+		} else {
+			_, err := mexpr.Parse(s[2:len(s)-1], paramsExample)
+			if err != nil {
+				ctx.WithPath("$if").AddError(fmt.Errorf("error validating template: unable to test $if expression: %v", err))
+			}
 		}
 	}
 	if t["$then"] == nil {
-		ctx.Meta.TemplateComplexity++
 		ctx.AddError(fmt.Errorf("error validating template:  $then clause is required for $if branching"))
 	} else {
+		ctx.Meta.TemplateComplexity++
 		validateTemplate(ctx.WithPath("$then"), s, t["$then"], paramsExample)
 	}
 	if t["$else"] != nil {
@@ -199,26 +198,23 @@ func validateLoop(ctx *context, s *jsonschema.Schema, t map[string]interface{}, 
 	case string:
 		ctx.Meta.TemplateComplexity++
 		if !strings.HasPrefix(v, "${") {
-			ctx.AddError(fmt.Errorf("error validating template: $for expression must use ${...} interpolation syntax"))
-			return
-		}
-		results, err := mexpr.Eval(v[2:len(v)-1], paramsExample)
-		if err != nil {
-			ctx.AddError(fmt.Errorf("error validating template: unable to test $for expression: %v", err))
-			return
-		}
-
-		if a, ok := results.([]interface{}); ok {
-			item = a[0]
+			ctx.WithPath("$for").AddError(fmt.Errorf("error validating template: $for expression must use ${...} interpolation syntax"))
 		} else {
-			ctx.AddError((fmt.Errorf("error validating template: $for expresssion must result in an array but found '%v'", results)))
-			return
+			results, err := mexpr.Eval(v[2:len(v)-1], paramsExample)
+			if err != nil {
+				ctx.WithPath("$for").AddError(fmt.Errorf("error validating template: unable to test $for expression: %v", err))
+			} else {
+				if a, ok := results.([]interface{}); ok {
+					item = a[0]
+				} else {
+					ctx.WithPath("$for").AddError((fmt.Errorf("error validating template: $for expresssion must result in an array but found '%v'", results)))
+				}
+			}
 		}
 	case []interface{}:
 		item = v[0]
 	default:
-		ctx.AddError(fmt.Errorf("error validating template: $for expression must be an array or string"))
-		return
+		ctx.WithPath("$for").AddError(fmt.Errorf("error validating template: $for expression must be an array or string"))
 	}
 
 	if t["$each"] == nil {
@@ -235,7 +231,7 @@ func validateLoop(ctx *context, s *jsonschema.Schema, t map[string]interface{}, 
 			if s, ok := t["$as"].(string); ok {
 				as = s
 			} else {
-				ctx.AddError(fmt.Errorf("error validating template: $as must be a string"))
+				ctx.WithPath("$as").AddError(fmt.Errorf("error validating template: $as must be a string"))
 				return
 			}
 		}
@@ -277,7 +273,7 @@ func validateFlatten(ctx *context, s *jsonschema.Schema, t map[string]interface{
 			return
 		}
 	}
-	ctx.AddError(fmt.Errorf("$flatten must be an array or contain a $for clause"))
+	ctx.WithPath("$flatten").AddError(fmt.Errorf("$flatten must be an array or contain a $for clause"))
 }
 
 func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, paramsExample map[string]interface{}) {
