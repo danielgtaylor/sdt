@@ -1,0 +1,6 @@
+tasks:
+  - init: go get && go build ./... && go test ./... && go install ./cmd/...
+    command: sdt --help
+vscode:
+  extensions:
+    - danielgtaylor.structured-data-templates
