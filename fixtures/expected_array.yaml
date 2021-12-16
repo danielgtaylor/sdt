@@ -9,5 +9,5 @@ document:
 tests:
   - input: {}
     errors:
-      - type number not allowed, expecting [array]
+      - type number not allowed, expecting array with integer items
     expected: {}

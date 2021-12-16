@@ -45,7 +45,7 @@ func generateExample(s *jsonschema.Schema) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return []interface{}{example}, nil
+		return []interface{}{example, example, example}, nil
 	case "object":
 		if s.AdditionalProperties != nil {
 			// Ignore `additionalProperties: false`, fail everything else.

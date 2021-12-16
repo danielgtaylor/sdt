@@ -124,7 +124,7 @@ String interpolation, branching conditions, and loop variable selection all use 
 - `item.bars.length <= 5 or my_override`
 - `"sdt" in name`
 - `name startsWith "sdt"`
-- `"foo" in ["foo", "bar"]`
+- `"foo" in my_array`
 - `loop.index + 1`
 
 See [danielgtaylor/mexpr syntax](https://github.com/danielgtaylor/mexpr#syntax) for details.

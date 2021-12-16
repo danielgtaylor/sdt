@@ -10,5 +10,5 @@ document:
 tests:
   - input: {}
     errors:
-      - type number not allowed, expecting [object]
+      - type number not allowed, expecting object
     expected: {}

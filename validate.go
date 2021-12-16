@@ -20,6 +20,13 @@ func hasType(s *jsonschema.Schema, typ string) bool {
 			return true
 		}
 	}
+	if len(s.Types) == 0 && typ == "string" && len(s.Enum) > 0 {
+		// Special case: no explicit `type` given but enum is present, so let's
+		// use the type of the enum values.
+		if getJSONType(s.Enum[0]) == typ {
+			return true
+		}
+	}
 	return false
 }
 
@@ -116,13 +123,13 @@ func wrongTypeError(ctx *context, found string, expected *jsonschema.Schema) {
 	}
 	if hasType(expected, "array") {
 		items := getItems(expected)
-		extra = fmt.Sprintf(" with %v items", items.Types)
+		extra = fmt.Sprintf(" with %s items", strings.Join(items.Types, " or "))
 		if hasType(items, "object") {
 			extra += fmt.Sprintf(" with properties %v", getKeys(items.Properties))
 		}
 	}
 
-	ctx.AddError(fmt.Errorf("error validating template: type %s not allowed, expecting %v%s", found, expected.Types, extra))
+	ctx.AddError(fmt.Errorf("error validating template: type %s not allowed, expecting %s%s", found, strings.Join(expected.Types, " or "), extra))
 }
 
 func validateString(ctx *context, s *jsonschema.Schema, template interface{}, paramsExample map[string]interface{}) {
@@ -134,7 +141,7 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 			ctx.Meta.TemplateComplexity++
 			_, err := mexpr.Parse(expr, paramsExample)
 			if err != nil {
-				ctx.AddErrorOffset(fmt.Errorf("error validating template: unable to compile expression '%s': %v", expr, err), match[0]+err.Offset()+2)
+				ctx.AddErrorOffset(fmt.Errorf("error validating template: unable to compile expression '%s': %v", expr, err), uint16(match[0])+err.Offset()+2, err.Length())
 				if len(matches) == 1 && match[0] == 0 && match[1] == len(template.(string)) {
 					return
 				}
@@ -147,7 +154,7 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 		t := template.(string)
 		out, err := mexpr.Eval(t[2:len(t)-1], paramsExample)
 		if err != nil {
-			ctx.AddErrorOffset(fmt.Errorf("error validating template: unable to eval expression '%s': %v", t[2:len(t)-1], err), err.Offset()+2)
+			ctx.AddErrorOffset(fmt.Errorf("error validating template: unable to eval expression '%s': %v", t[2:len(t)-1], err), err.Offset()+2, err.Length())
 			return
 		}
 		outJSONType := getJSONType(out)
@@ -158,7 +165,7 @@ func validateString(ctx *context, s *jsonschema.Schema, template interface{}, pa
 				// correctly in the output.
 				return
 			}
-			ctx.AddError(fmt.Errorf("error validating template: expression '%s' results in %s but expecting %v", t[2:len(t)-1], outJSONType, s.Types))
+			ctx.AddError(fmt.Errorf("error validating template: expression '%s' results in %s but expecting %s", t[2:len(t)-1], outJSONType, strings.Join(s.Types, " or ")))
 		}
 		return
 	}
@@ -176,7 +183,7 @@ func validateBranch(ctx *context, s *jsonschema.Schema, t map[string]interface{}
 		} else {
 			_, err := mexpr.Parse(s[2:len(s)-1], paramsExample)
 			if err != nil {
-				ctx.WithPath("$if").AddErrorOffset(fmt.Errorf("error validating template: unable to test $if expression: %v", err), err.Offset()+2)
+				ctx.WithPath("$if").AddErrorOffset(fmt.Errorf("error validating template: unable to test $if expression: %v", err), err.Offset()+2, err.Length())
 			}
 		}
 	}
@@ -193,7 +200,6 @@ func validateBranch(ctx *context, s *jsonschema.Schema, t map[string]interface{}
 }
 
 func validateLoop(ctx *context, s *jsonschema.Schema, t map[string]interface{}, paramsExample map[string]interface{}) {
-
 	var item interface{}
 	switch v := t["$for"].(type) {
 	case string:
@@ -203,7 +209,8 @@ func validateLoop(ctx *context, s *jsonschema.Schema, t map[string]interface{}, 
 		} else {
 			results, err := mexpr.Eval(v[2:len(v)-1], paramsExample)
 			if err != nil {
-				ctx.WithPath("$for").AddErrorOffset(fmt.Errorf("error validating template: unable to test $for expression: %v", err), err.Offset()+2)
+				ctx.WithPath("$for").AddErrorOffset(fmt.Errorf("error validating template: unable to test $for expression: %v", err), err.Offset()+2, err.Length())
+				return
 			} else {
 				if a, ok := results.([]interface{}); ok {
 					item = a[0]
@@ -277,6 +284,52 @@ func validateFlatten(ctx *context, s *jsonschema.Schema, t map[string]interface{
 	ctx.WithPath("$flatten").AddError(fmt.Errorf("$flatten must be an array or contain a $for clause"))
 }
 
+func validateOf(ctx *context, jsonType string, of string, schemas []*jsonschema.Schema, template interface{}, paramsExample map[string]interface{}) {
+	// Any: one or more
+	// All: every single one
+	// One: exactly one
+	matches := 0
+	for _, s := range schemas {
+		if s.Ref != nil {
+			s = s.Ref
+		}
+		if hasType(s, jsonType) {
+			// If it's an array/object we should try to do more precise matching.
+			if jsonType == "array" {
+				itemType := getJSONType(template.([]interface{})[0])
+				if !hasType(getItems(s), itemType) {
+					// If the item's type doesn't match, then this is no match and we
+					// keep going with the next schema.
+					continue
+				}
+			}
+			if jsonType == "object" {
+				for k, v := range template.(map[string]interface{}) {
+					propType := getJSONType(v)
+					if s.Properties[k] != nil && !hasType(s.Properties[k], propType) {
+						// If the property exists but the type doesn't match, then this
+						// is no match and we keep going with the next schema.
+						continue
+					}
+				}
+			}
+			matches++
+			validateTemplate(ctx, s, template, paramsExample)
+
+			if of == "oneOf" {
+				// Our matching isn't perfect, so if at least one matches we approve.
+				return
+			}
+		}
+	}
+
+	if matches == 0 {
+		ctx.AddError(fmt.Errorf("error validating template: no match for %s", of))
+	} else if of == "allOf" && matches < len(schemas) {
+		ctx.AddError(fmt.Errorf("error validating template: allOf only matches %d of %d schemas", matches, len(schemas)))
+	}
+}
+
 func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, paramsExample map[string]interface{}) {
 	if s == nil {
 		return
@@ -287,6 +340,21 @@ func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, 
 	}
 
 	jsonType := getJSONType(template)
+
+	if len(s.OneOf) > 0 {
+		validateOf(ctx, jsonType, "oneOf", s.OneOf, template, paramsExample)
+		return
+	}
+
+	if len(s.AnyOf) > 0 {
+		validateOf(ctx, jsonType, "anyOf", s.AnyOf, template, paramsExample)
+		return
+	}
+
+	if len(s.AllOf) > 0 {
+		validateOf(ctx, jsonType, "allOf", s.AllOf, template, paramsExample)
+		return
+	}
 
 	// Special case: string template
 	if jsonType == "string" {
@@ -345,8 +413,10 @@ func validateTemplate(ctx *context, s *jsonschema.Schema, template interface{}, 
 					continue
 				}
 
-				ctx.WithPath(k).AddError(fmt.Errorf("error validating template: property %s not in allowed set %v", k, getKeys(s.Properties)))
-				continue
+				if addl, ok := s.AdditionalProperties.(bool); ok && !addl {
+					ctx.WithPath(k).AddError(fmt.Errorf("error validating template: property %s not in allowed set %v", k, getKeys(s.Properties)))
+					continue
+				}
 			}
 
 			validateTemplate(ctx.WithPath(k), propSchema, v, paramsExample)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/alecthomas/chroma"
@@ -63,6 +64,7 @@ func init() {
 
 var useColor bool
 var format string
+var verbose bool
 
 var renderExample = `sdt render doc.yaml <params.yaml
 sdt render doc.yaml name: Alice, param2: 123
@@ -77,12 +79,15 @@ func highlight(lexer string, data []byte) ([]byte, error) {
 	return []byte(sb.String()), nil
 }
 
-func printColor(color int, label string, err error) {
-	colorized := label
+func colorize(color int, value string) string {
 	if useColor {
-		colorized = fmt.Sprintf("\x1b[0;%dm%s:\x1b[0m", color, label)
+		return fmt.Sprintf("\x1b[0;%dm%s\x1b[0m", color, value)
 	}
-	fmt.Fprintf(os.Stderr, "%s %v\n", colorized, err)
+	return value
+}
+
+func printColor(color int, label string, err error) {
+	fmt.Fprintf(os.Stderr, "%s %v\n", colorize(color, label+":"), err)
 }
 
 func printResult(result interface{}) {
@@ -91,7 +96,8 @@ func printResult(result interface{}) {
 	switch format {
 	case "yaml":
 		out, _ = yaml.Marshal(result)
-	case "json":
+	case "json", "default":
+		format = "json"
 		out, _ = json.MarshalIndent(result, "", "  ")
 	case "shorthand":
 		out = []byte(shorthand.Get(result.(map[string]interface{})))
@@ -111,25 +117,77 @@ func printResult(result interface{}) {
 	fmt.Fprintln(stdout, string(out))
 }
 
+func printWarnings(warnings []sdt.ContextError) {
+	for _, warning := range warnings {
+		printColor(33, "warning", warning)
+	}
+}
+
+func exitErr(code int, msg string, err error) {
+	if format != "default" {
+		printResult([]interface{}{map[string]interface{}{
+			"message": err.Error(),
+		}})
+		os.Exit(code)
+	}
+
+	fmt.Fprintf(os.Stderr, "%s %s\n", msg, err.Error())
+	os.Exit(code)
+}
+
+// colorMarkerRegex is used to colorize source code markers when printing
+// out errors in a terminal.
+var colorMarkerRegex = regexp.MustCompile(`(?m)^\s+\^+`)
+
+func exit(code int, msg string, warnings []sdt.ContextError, errs []sdt.ContextError) {
+	if format != "default" {
+		combined := []interface{}{}
+		for _, x := range [][]sdt.ContextError{warnings, errs} {
+			for _, y := range x {
+				combined = append(combined, map[string]interface{}{
+					"path":    y.Path(),
+					"offset":  y.Offset(),
+					"line":    y.Line(),
+					"column":  y.Column(),
+					"length":  y.Length(),
+					"message": y.Message(),
+					// "source":  y.Source(),
+				})
+			}
+		}
+		printResult(combined)
+		os.Exit(code)
+	}
+
+	printWarnings(warnings)
+	if len(errs) > 0 {
+		fmt.Fprintln(os.Stderr, "❌ Error while validating template:")
+		for i, err := range errs {
+			fmt.Fprintf(os.Stderr, "%v\n",
+				colorMarkerRegex.ReplaceAllString(err.Error(), colorize(31, "$0")))
+			if i < len(errs)-1 {
+				fmt.Fprintln(os.Stderr, "")
+			}
+		}
+	}
+
+	os.Exit(code)
+}
+
 func mustLoad(filename string) *sdt.Document {
 	doc, err := sdt.NewFromFile(filename)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Unable to load %s:\n%v", filename, err)
-		os.Exit(1)
+		exitErr(1, "❌ Unable to load "+filename, err)
 	}
 
 	// Validate template output format
 	warnings, errs := doc.ValidateTemplate()
-	for _, warning := range warnings {
-		printColor(33, "warning", warning)
-	}
+
 	if len(errs) > 0 {
-		fmt.Fprintln(os.Stderr, "❌ Error while validating template:")
-		for _, err := range errs {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-		}
-		os.Exit(1)
+		exit(1, "❌ Error while validating template", warnings, errs)
 	}
+
+	printWarnings(warnings)
 
 	return doc
 }
@@ -146,7 +204,8 @@ func main() {
 		Example: "sdt validate doc.yaml\nsdt render doc.yaml <params.yaml some: value, other: 123",
 	}
 
-	root.PersistentFlags().StringVarP(&format, "output", "o", "json", "Output format [json, yaml, shorthand]")
+	root.PersistentFlags().StringVarP(&format, "output", "o", "default", "Output format [json, yaml, shorthand]")
+	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 
 	validate := &cobra.Command{
 		Use:   "validate FILENAME",
@@ -166,8 +225,7 @@ func main() {
 			doc := mustLoad(args[0])
 			example, err := doc.Example()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "❌ Error generating example\n%v", err)
-				os.Exit(1)
+				exitErr(1, "❌ Error generating example\n", err)
 			}
 
 			printResult(example)
@@ -184,37 +242,47 @@ func main() {
 
 			params, err := shorthand.GetInput(args[1:])
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "❌ Error getting input\n%v", err)
-				os.Exit(1)
+				exitErr(1, "❌ Error getting input\n%v", err)
 			}
 			if params == nil {
 				params = map[string]interface{}{}
+			} else {
+				// Temporary fix: round-trip to remove custom shorthand list types.
+				enc, err := json.Marshal(params)
+				if err != nil {
+					panic(err)
+				}
+				json.Unmarshal(enc, &params)
+			}
+
+			if verbose {
+				fmt.Fprintln(os.Stderr, "Input:")
+				printResult(params)
 			}
 
 			// Validate params from template input schema
 			if err := doc.ValidateInput(params); err != nil {
-				fmt.Fprintln(os.Stderr, "❌ Error while validating input params:")
-				fmt.Fprintf(os.Stderr, "%v\n", err)
-				os.Exit(1)
+				exitErr(1, "❌ Error while validating input params:", err)
 			}
 
 			// Render the output
 			rendered, errs := doc.Render(params)
 			if len(errs) > 0 {
-				fmt.Fprintln(os.Stderr, "❌ Error while rendering template:")
-				for _, err := range errs {
-					fmt.Fprintf(os.Stderr, "%v\n", err)
-				}
-				os.Exit(1)
+				exit(1, "❌ Error while rendering template:", nil, errs)
 			}
 
 			// Confirm that the output conforms to the schema now that it's rendered.
 			if err := doc.ValidateOutput(rendered); err != nil {
-				fmt.Fprintln(os.Stderr, "❌ Error validating rendered output:")
-				fmt.Fprintf(os.Stderr, "%v\n", err)
-				os.Exit(1)
+				if verbose {
+					fmt.Fprintln(os.Stderr, "Rendered result:")
+					printResult(rendered)
+				}
+				exitErr(1, "❌ Error validating rendered output:", err)
 			}
 
+			if verbose {
+				fmt.Fprintln(os.Stderr, "Result:")
+			}
 			printResult(rendered)
 		},
 	}

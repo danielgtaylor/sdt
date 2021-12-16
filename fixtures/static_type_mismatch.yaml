@@ -20,8 +20,8 @@ document:
 tests:
   - input: {}
     errors:
-      - string not allowed, expecting [boolean]
-      - string not allowed, expecting [integer]
-      - string not allowed, expecting [number]
-      - boolean not allowed, expecting [string]
+      - string not allowed, expecting boolean
+      - string not allowed, expecting integer
+      - string not allowed, expecting number
+      - boolean not allowed, expecting string
     expected: {}

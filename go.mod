@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/alecthomas/chroma v0.9.4
-	github.com/danielgtaylor/mexpr v1.3.0
+	github.com/danielgtaylor/mexpr v1.5.1
 	github.com/danielgtaylor/shorthand v1.0.0
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/goccy/go-yaml v1.9.4

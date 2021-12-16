@@ -1,0 +1,22 @@
+document:
+  schemas:
+    input: {}
+    output:
+      allOf:
+        - type: object
+          properties:
+            foo:
+              type: string
+          required: [foo]
+        - type: object
+          properties:
+            bar:
+              type: string
+          required: [bar]
+  template:
+    foo: value
+tests:
+  - input: {}
+    errors:
+      - missing properties
+    expected: {}

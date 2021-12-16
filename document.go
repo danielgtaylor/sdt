@@ -127,9 +127,9 @@ func (doc *Document) ValidateInput(params map[string]interface{}) error {
 
 // ValidateTemplate validates that the template is structurally and semantically
 // correct based on the given schemas.
-func (doc *Document) ValidateTemplate() ([]error, []error) {
+func (doc *Document) ValidateTemplate() ([]ContextError, []ContextError) {
 	if doc.Schemas == nil || doc.Schemas.Input == nil {
-		return nil, []error{fmt.Errorf("input schema required")}
+		return nil, []ContextError{&contextError{err: fmt.Errorf("input schema required")}}
 	}
 
 	doc.LoadSchemas()
@@ -141,13 +141,15 @@ func (doc *Document) ValidateTemplate() ([]error, []error) {
 	ctx := newContext(doc.Filename, doc.ast, "template")
 	example, err := generateExample(doc.inputSchema)
 	if err != nil {
-		return nil, []error{fmt.Errorf("error validating template: %w", err)}
+		return nil, []ContextError{&contextError{err: fmt.Errorf("error validating template: %w", err)}}
 	}
 	validateTemplate(ctx, doc.outputSchema, doc.Template, example.(map[string]interface{}))
 
-	warnings := []error{}
+	warnings := []ContextError{}
 	if ctx.Meta.TemplateComplexity > 50 {
-		warnings = append(warnings, fmt.Errorf("template complexity is high: %d", ctx.Meta.TemplateComplexity))
+		warnings = append(warnings, &contextError{
+			err: fmt.Errorf("template complexity is high: %d", ctx.Meta.TemplateComplexity),
+		})
 	}
 
 	return warnings, ctx.Meta.Errors
@@ -170,7 +172,7 @@ func (doc *Document) ValidateOutput(output interface{}) error {
 }
 
 // Render the template into a data structure.
-func (doc *Document) Render(params map[string]interface{}) (interface{}, []error) {
+func (doc *Document) Render(params map[string]interface{}) (interface{}, []ContextError) {
 	doc.LoadSchemas()
 	setDefaults(doc.inputSchema, params)
 	ctx := newContext(doc.Filename, doc.ast, "template")

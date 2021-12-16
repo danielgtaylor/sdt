@@ -20,25 +20,37 @@ type Test struct {
 	Expected interface{}            `json:"expected" yaml:"expected"`
 }
 
-func (test *Test) ErrorsFail(t testing.TB, errs []error) bool {
-	if len(errs) > 0 {
-		if len(test.Errors) > 0 {
-			// We expected errors. Match them!
-		outer:
-			for _, expected := range test.Errors {
-				for _, actual := range errs {
-					if strings.Contains(actual.Error(), expected) {
-						continue outer
+func (test *Test) ErrorsFail(t testing.TB, errs interface{}) bool {
+	if e, ok := errs.([]ContextError); ok {
+		if len(e) > 0 {
+			if len(test.Errors) > 0 {
+				// We expected errors. Match them!
+			outer:
+				for _, expected := range test.Errors {
+					for _, actual := range e {
+						if strings.Contains(actual.Error(), expected) {
+							continue outer
+						}
 					}
+					t.Error(fmt.Errorf("expected '%s' but found %v", expected, errs))
 				}
+
+				return true
+			}
+		}
+	}
+
+	if e, ok := errs.(error); ok {
+		if e != nil {
+			for _, expected := range test.Errors {
+				if strings.Contains(e.Error(), expected) {
+					continue
+				}
+
 				t.Error(fmt.Errorf("expected '%s' but found %v", expected, errs))
 			}
-
 			return true
 		}
-
-		t.Error(errs)
-		return true
 	}
 
 	return false
@@ -93,7 +105,7 @@ func TestFixtures(t *testing.T) {
 				}
 
 				err := f.Document.ValidateInput(test.Input)
-				if err != nil && test.ErrorsFail(t, []error{err}) {
+				if test.ErrorsFail(t, err) {
 					return
 				}
 
@@ -103,7 +115,7 @@ func TestFixtures(t *testing.T) {
 				}
 
 				err = f.Document.ValidateOutput(out)
-				if err != nil && test.ErrorsFail(t, []error{err}) {
+				if test.ErrorsFail(t, err) {
 					return
 				}
 
@@ -143,14 +155,14 @@ func BenchmarkFixtures(b *testing.B) {
 			b.Run(fmt.Sprintf("CheckInput-%s-%d-%s", f.Name, i, test.Name), func(b *testing.B) {
 				for j := 0; j < b.N; j++ {
 					err := f.Document.ValidateInput(test.Input)
-					if err != nil && test.ErrorsFail(b, []error{err}) {
+					if test.ErrorsFail(b, err) {
 						return
 					}
 				}
 			})
 			var out interface{}
 			b.Run(fmt.Sprintf("Render-%s-%d-%s", f.Name, i, test.Name), func(b *testing.B) {
-				var errs []error
+				var errs []ContextError
 				for j := 0; j < b.N; j++ {
 					out, errs = f.Document.Render(test.Input)
 					if test.ErrorsFail(b, errs) {
@@ -161,7 +173,7 @@ func BenchmarkFixtures(b *testing.B) {
 			b.Run(fmt.Sprintf("CheckOutput-%s-%d-%s", f.Name, i, test.Name), func(b *testing.B) {
 				for j := 0; j < b.N; j++ {
 					err := f.Document.ValidateOutput(out)
-					if err != nil && test.ErrorsFail(b, []error{err}) {
+					if test.ErrorsFail(b, err) {
 						return
 					}
 				}
